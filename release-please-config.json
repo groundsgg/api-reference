@@ -1,0 +1,10 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "api-reference",
+      "include-component-in-tag": true,
+      "include-v-in-tag": true
+    }
+  }
+}
