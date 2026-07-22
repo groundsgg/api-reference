@@ -19,13 +19,14 @@ const apiSourceSchema = z.object({
       "Source path must be a safe relative OpenAPI path",
     ),
   default: z.boolean(),
-});
+}).strict();
 
 const apiSourceRegistrySchema = z
   .object({
     schemaVersion: z.literal(1),
     sources: z.array(apiSourceSchema),
   })
+  .strict()
   .superRefine((registry, context) => {
     const uniqueFields = ["id", "slug", "path"] as const;
 

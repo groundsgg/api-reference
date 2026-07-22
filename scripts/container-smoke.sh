@@ -41,7 +41,12 @@ printf '%s' "${index_html}" | grep "Grounds API Reference" >/dev/null
 curl --fail --silent "${base_url}/docs/specs/registry.json" | grep '"schemaVersion": 1' >/dev/null
 test "$(curl --fail --silent "${base_url}/docs/healthz")" = "ok"
 test "$(curl --silent --output /dev/null --write-out '%{http_code}' "${base_url}/")" = "404"
-test -n "$(docker image inspect --format '{{.Config.User}}' "${image_tag}")"
+runtime_user="$(docker image inspect --format '{{.Config.User}}' "${image_tag}")"
+test -n "${runtime_user}"
+if [[ "${runtime_user}" == "root" || "${runtime_user}" == root:* || "${runtime_user}" == "0" || "${runtime_user}" == 0:* ]]; then
+  echo "Container image uses root runtime user (user=${runtime_user})" >&2
+  exit 1
+fi
 
 asset_path="$(printf '%s' "${index_html}" | sed -n 's/.*src="\([^"]*\/assets\/[^"]*\)".*/\1/p')"
 test -n "${asset_path}"

@@ -59,4 +59,23 @@ describe("API source registry", () => {
       }),
     ).toThrow(/safe relative openapi path/i);
   });
+
+  it("rejects unknown top-level fields", () => {
+    expect(() =>
+      parseApiSourceRegistry({
+        schemaVersion: 1,
+        sources: [],
+        unexpected: true,
+      }),
+    ).toThrow(/unrecognized key/i);
+  });
+
+  it("rejects unknown source fields", () => {
+    expect(() =>
+      parseApiSourceRegistry({
+        schemaVersion: 1,
+        sources: [{ ...source, unexpected: true }],
+      }),
+    ).toThrow(/unrecognized key/i);
+  });
 });
