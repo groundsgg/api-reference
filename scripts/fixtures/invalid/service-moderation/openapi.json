@@ -1,0 +1,7 @@
+{
+  "openapi": "4.0.0",
+  "info": {
+    "title": "Moderation API"
+  },
+  "paths": {}
+}
