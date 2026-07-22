@@ -25,6 +25,43 @@ body {
   min-height: 100vh;
 }
 
-main {
+.reference-state {
+  display: grid;
   min-height: 100vh;
+  padding: 2rem;
+  place-items: center;
+  background:
+    radial-gradient(circle at top, rgb(95 76 255 / 18%), transparent 36rem),
+    #090c12;
+}
+
+.reference-state__card {
+  width: min(100%, 40rem);
+  padding: clamp(2rem, 7vw, 4.5rem);
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 1.5rem;
+  background: rgb(16 21 31 / 88%);
+  box-shadow: 0 2rem 6rem rgb(0 0 0 / 35%);
+}
+
+.reference-state__eyebrow {
+  margin: 0 0 0.75rem;
+  color: #8f82ff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.reference-state h1 {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  letter-spacing: -0.04em;
+}
+
+.reference-state h1 + p {
+  margin: 1.25rem 0 0;
+  color: #aeb7c7;
+  font-size: 1.05rem;
+  line-height: 1.6;
 }
