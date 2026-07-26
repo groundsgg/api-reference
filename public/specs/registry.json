@@ -1,4 +1,12 @@
 {
   "schemaVersion": 1,
-  "sources": []
+  "sources": [
+    {
+      "id": "service-permissions",
+      "title": "Permissions API",
+      "slug": "permissions",
+      "path": "service-permissions/openapi.json",
+      "default": true
+    }
+  ]
 }
