@@ -2,6 +2,13 @@
   "schemaVersion": 1,
   "sources": [
     {
+      "id": "service-moderation",
+      "title": "Moderation API",
+      "slug": "moderation",
+      "path": "service-moderation/openapi.json",
+      "default": false
+    },
+    {
       "id": "service-permissions",
       "title": "Permissions API",
       "slug": "permissions",

@@ -1,0 +1,3785 @@
+{
+  "openapi" : "3.1.0",
+  "components" : {
+    "schemas" : {
+      "AppendEvidenceMessagesRequest" : {
+        "description" : "Additional immutable messages for an open evidence capture.",
+        "examples" : [ {
+          "messages" : [ {
+            "messageId" : "8ec0b210-4ae6-486e-9301-e9e70c244bb8",
+            "senderPlayerId" : "6be90520-6c3e-4431-a7f2-d3eadf831e17",
+            "content" : "Please stop sending repeated messages.",
+            "sentAt" : "2026-07-22T10:15:31Z",
+            "role" : "CONTEXT",
+            "sequence" : 1,
+            "channel" : "GLOBAL",
+            "runtimeId" : "proxy-eu-1",
+            "serverId" : "lobby-1",
+            "visibility" : "PUBLIC",
+            "participantPlayerIds" : [ ],
+            "signatureStatus" : "UNSIGNED"
+          } ]
+        } ],
+        "type" : "object",
+        "required" : [ "messages" ],
+        "properties" : {
+          "messages" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EvidenceMessageRequest"
+            }
+          }
+        }
+      },
+      "AutomaticConfirmationMode" : {
+        "type" : "string",
+        "enum" : [ "SHADOW", "ENFORCED" ]
+      },
+      "AutomaticConfirmationRule" : {
+        "type" : "object",
+        "required" : [ "source", "detectorId", "detectorVersion", "violationType", "severity", "minimumConfidence", "mode" ],
+        "properties" : {
+          "source" : {
+            "$ref" : "#/components/schemas/AutomaticConfirmationSource"
+          },
+          "detectorId" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "detectorVersion" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "violationType" : {
+            "$ref" : "#/components/schemas/ViolationType"
+          },
+          "severity" : {
+            "$ref" : "#/components/schemas/Severity"
+          },
+          "minimumConfidence" : {
+            "type" : "number",
+            "maximum" : 1,
+            "minimum" : 0,
+            "description" : "Inclusive confidence threshold required for automatic confirmation."
+          },
+          "mode" : {
+            "description" : "SHADOW records findings without risk; ENFORCED requires a matching enabled risk rule.",
+            "type" : "string",
+            "$ref" : "#/components/schemas/AutomaticConfirmationMode"
+          }
+        }
+      },
+      "AutomaticConfirmationSource" : {
+        "type" : "string",
+        "enum" : [ "STATIC_FILTER", "OPENAI_MODERATION", "SELF_HOSTED_MODEL" ]
+      },
+      "AutomaticFindingDecisionRequest" : {
+        "description" : "Immutable classification result for one stored system message report.",
+        "type" : "object",
+        "required" : [ "classificationReference", "violationType", "confidence" ],
+        "properties" : {
+          "classificationReference" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "violationType" : {
+            "$ref" : "#/components/schemas/ViolationType"
+          },
+          "confidence" : {
+            "type" : "number",
+            "maximum" : 1,
+            "minimum" : 0
+          }
+        }
+      },
+      "AutomaticFindingDecisionResponse" : {
+        "description" : "Minimal result of an automatic finding decision.",
+        "type" : "object",
+        "required" : [ "decisionId", "outcome", "findingId", "replay" ],
+        "properties" : {
+          "decisionId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "outcome" : {
+            "$ref" : "#/components/schemas/AutomaticFindingOutcome"
+          },
+          "findingId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "replay" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "AutomaticFindingOutcome" : {
+        "type" : "string",
+        "enum" : [ "CONFIRMED", "SHADOW", "NOT_ALLOWED", "NO_ACTIVE_POLICY", "INSUFFICIENT_EVIDENCE", "ALREADY_CONFIRMED" ]
+      },
+      "CaptureStatus" : {
+        "type" : "string",
+        "enum" : [ "OPEN", "COMPLETE", "INCOMPLETE" ]
+      },
+      "CompleteEvidenceCaptureRequest" : {
+        "description" : "Requested terminal state for an open evidence capture.",
+        "examples" : [ {
+          "status" : "COMPLETE",
+          "incompleteReason" : null,
+          "expectedMessageCount" : 12
+        } ],
+        "type" : "object",
+        "required" : [ "status", "incompleteReason", "expectedMessageCount" ],
+        "properties" : {
+          "status" : {
+            "$ref" : "#/components/schemas/CaptureStatus"
+          },
+          "incompleteReason" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IncompleteReason"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectedMessageCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "ConfirmManualFindingRequest" : {
+        "description" : "Manual classification of chat evidence attached to an open case.",
+        "type" : "object",
+        "required" : [ "violationType", "severity", "primaryMessageId", "reason" ],
+        "properties" : {
+          "violationType" : {
+            "$ref" : "#/components/schemas/ViolationType"
+          },
+          "severity" : {
+            "$ref" : "#/components/schemas/Severity"
+          },
+          "primaryMessageId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "supportingMessageIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid",
+              "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+            }
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 1,
+            "description" : "Required internal audit reason."
+          }
+        }
+      },
+      "ConfirmManualFindingResponse" : {
+        "description" : "Minimal result of a manual finding confirmation.",
+        "type" : "object",
+        "required" : [ "findingId", "caseId", "source", "confirmedAt", "policyVersionId", "replay" ],
+        "properties" : {
+          "findingId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "caseId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "source" : {
+            "$ref" : "#/components/schemas/FindingConfirmationSource"
+          },
+          "confirmedAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "policyVersionId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "replay" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "CorrectFindingRequest" : {
+        "description" : "Append-only correction of a confirmed moderation finding.",
+        "type" : "object",
+        "required" : [ "type", "reason" ],
+        "properties" : {
+          "type" : {
+            "$ref" : "#/components/schemas/FindingCorrectionType"
+          },
+          "violationType" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/ViolationType"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "severity" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Severity"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 1,
+            "description" : "Required internal audit reason."
+          }
+        }
+      },
+      "CorrectFindingResponse" : {
+        "description" : "Minimal result of a finding correction.",
+        "type" : "object",
+        "required" : [ "correctionId", "correctedFindingId", "replacementFindingId", "type", "correctedAt", "replay" ],
+        "properties" : {
+          "correctionId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "correctedFindingId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "replacementFindingId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/FindingCorrectionType"
+          },
+          "correctedAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "replay" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "CreatePolicyDraftRequest" : {
+        "description" : "Selects the policy version copied into a new draft.",
+        "type" : "object",
+        "properties" : {
+          "basedOnPolicyVersionId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "DomainModerationStatus" : {
+        "type" : "string",
+        "enum" : [ "CLEAR", "WARNED", "RESTRICTED" ]
+      },
+      "DomainThreshold" : {
+        "type" : "object",
+        "required" : [ "domain", "restrictedAt" ],
+        "properties" : {
+          "domain" : {
+            "$ref" : "#/components/schemas/RiskDomain"
+          },
+          "restrictedAt" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1,
+            "description" : "Positive effective-point threshold for the restricted domain status."
+          }
+        }
+      },
+      "Duration" : {
+        "type" : "string",
+        "format" : "duration"
+      },
+      "EvidenceAppendReceipt" : {
+        "description" : "Result of an idempotent evidence append operation.",
+        "examples" : [ {
+          "evidenceCaptureId" : "81b1174f-f634-4304-a537-31c6a416af88",
+          "addedCount" : 1,
+          "existingCount" : 0,
+          "storedMessageCount" : 12,
+          "status" : "OPEN"
+        } ],
+        "type" : "object",
+        "required" : [ "evidenceCaptureId", "addedCount", "existingCount", "storedMessageCount", "status" ],
+        "properties" : {
+          "evidenceCaptureId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "addedCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "existingCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "storedMessageCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/CaptureStatus"
+          }
+        }
+      },
+      "EvidenceCompletionReceipt" : {
+        "description" : "Result of an idempotent evidence capture completion operation.",
+        "examples" : [ {
+          "evidenceCaptureId" : "81b1174f-f634-4304-a537-31c6a416af88",
+          "status" : "COMPLETE",
+          "storedMessageCount" : 12,
+          "changed" : true
+        } ],
+        "type" : "object",
+        "required" : [ "evidenceCaptureId", "status", "storedMessageCount", "changed" ],
+        "properties" : {
+          "evidenceCaptureId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/CaptureStatus"
+          },
+          "storedMessageCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "changed" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "EvidenceMessageRequest" : {
+        "type" : "object",
+        "description" : "Immutable chat message promoted to moderation evidence.",
+        "examples" : [ {
+          "messageId" : "28bb4bbf-96c4-4e9c-89b9-132553ee2e34",
+          "senderPlayerId" : "6be90520-6c3e-4431-a7f2-d3eadf831e17",
+          "content" : "Please stop sending repeated messages.",
+          "sentAt" : "2026-07-22T10:15:30Z",
+          "role" : "TARGET",
+          "sequence" : 0,
+          "channel" : "GLOBAL",
+          "runtimeId" : "proxy-eu-1",
+          "serverId" : "lobby-1",
+          "visibility" : "PUBLIC",
+          "signatureStatus" : "UNSIGNED"
+        } ],
+        "required" : [ "messageId", "senderPlayerId", "content", "sentAt", "role", "sequence", "channel", "runtimeId", "serverId", "visibility", "signatureStatus" ],
+        "properties" : {
+          "messageId" : {
+            "type" : "string",
+            "examples" : [ "28bb4bbf-96c4-4e9c-89b9-132553ee2e34" ],
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "senderPlayerId" : {
+            "type" : "string",
+            "examples" : [ "6be90520-6c3e-4431-a7f2-d3eadf831e17" ],
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "content" : {
+            "type" : "string",
+            "examples" : [ "Please stop sending repeated messages." ]
+          },
+          "sentAt" : {
+            "type" : "string",
+            "examples" : [ "2026-07-22T10:15:30Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "role" : {
+            "$ref" : "#/components/schemas/EvidenceRole"
+          },
+          "sequence" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0,
+            "examples" : [ 0 ]
+          },
+          "channel" : {
+            "$ref" : "#/components/schemas/MessageChannel"
+          },
+          "runtimeId" : {
+            "type" : "string",
+            "examples" : [ "proxy-eu-1" ]
+          },
+          "serverId" : {
+            "type" : "string",
+            "examples" : [ "lobby-1" ]
+          },
+          "visibility" : {
+            "$ref" : "#/components/schemas/MessageVisibility"
+          },
+          "participantPlayerIds" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "type" : "string",
+              "format" : "uuid",
+              "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+            }
+          },
+          "signedPayload" : {
+            "type" : [ "string", "null" ],
+            "format" : "byte",
+            "description" : "Original signed chat payload encoded as Base64."
+          },
+          "signature" : {
+            "type" : [ "string", "null" ],
+            "format" : "byte",
+            "description" : "Original chat signature encoded as Base64."
+          },
+          "signatureStatus" : {
+            "$ref" : "#/components/schemas/SignatureStatus"
+          }
+        }
+      },
+      "EvidenceRole" : {
+        "type" : "string",
+        "enum" : [ "TARGET", "CONTEXT" ]
+      },
+      "FindingConfirmationSource" : {
+        "type" : "string",
+        "enum" : [ "MANUAL", "AUTOMATIC" ]
+      },
+      "FindingCorrectionRelationshipResponse" : {
+        "description" : "Append-only correction relationship visible on a finding projection.",
+        "type" : "object",
+        "required" : [ "correctionId", "type", "replacementFindingId", "correctedAt" ],
+        "properties" : {
+          "correctionId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/FindingCorrectionType"
+          },
+          "replacementFindingId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "correctedAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "FindingCorrectionType" : {
+        "type" : "string",
+        "enum" : [ "INVALIDATE", "RECLASSIFY" ]
+      },
+      "FindingQueryItemResponse" : {
+        "description" : "Safe portal projection of one confirmed moderation finding.",
+        "type" : "object",
+        "required" : [ "findingId", "findingIdentityId", "targetPlayerId", "caseId", "reportId", "primaryMessageId", "supportingMessageIds", "violationType", "severity", "source", "confirmedAt", "policyVersionId", "replacesFindingId", "correction" ],
+        "properties" : {
+          "findingId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "findingIdentityId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "targetPlayerId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "caseId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "reportId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "primaryMessageId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "supportingMessageIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid",
+              "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+            }
+          },
+          "violationType" : {
+            "$ref" : "#/components/schemas/ViolationType"
+          },
+          "severity" : {
+            "$ref" : "#/components/schemas/Severity"
+          },
+          "source" : {
+            "$ref" : "#/components/schemas/FindingConfirmationSource"
+          },
+          "confirmedAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "policyVersionId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "replacesFindingId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "correction" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/FindingCorrectionRelationshipResponse"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "FindingQueryPageResponse" : {
+        "description" : "Cursor page of safe moderation finding projections.",
+        "type" : "object",
+        "required" : [ "items", "nextCursor" ],
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FindingQueryItemResponse"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "GlobalModerationStatus" : {
+        "type" : "string",
+        "enum" : [ "CLEAR", "WARNED", "RESTRICTED", "SUSPENDED", "BANNED" ]
+      },
+      "IncompleteReason" : {
+        "type" : "string",
+        "enum" : [ "CONTEXT_UNAVAILABLE", "WINDOW_EXPIRED", "PRODUCER_SHUTDOWN" ]
+      },
+      "Instant" : {
+        "type" : "string",
+        "format" : "date-time"
+      },
+      "InternalDomainStatusResponse" : {
+        "description" : "Internal point and status calculation for one moderation risk domain.",
+        "additionalProperties" : false,
+        "type" : "object",
+        "required" : [ "domain", "effectivePoints", "status" ],
+        "properties" : {
+          "domain" : {
+            "$ref" : "#/components/schemas/RiskDomain"
+          },
+          "effectivePoints" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/DomainModerationStatus"
+          }
+        }
+      },
+      "InternalModerationStatusResponse" : {
+        "description" : "Internal moderation status calculation for authorized portal supporters.",
+        "additionalProperties" : false,
+        "type" : "object",
+        "required" : [ "playerId", "domains", "pointBasedStatus", "effectiveStatus", "reasonCode", "statusSince", "earliestImprovementAt", "calculatedAt", "nextEvaluationAt", "snapshotRevision" ],
+        "properties" : {
+          "playerId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "domains" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/InternalDomainStatusResponse"
+            }
+          },
+          "pointBasedStatus" : {
+            "$ref" : "#/components/schemas/GlobalModerationStatus"
+          },
+          "effectiveStatus" : {
+            "$ref" : "#/components/schemas/GlobalModerationStatus"
+          },
+          "reasonCode" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/ModerationStatusReasonCode"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "statusSince" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "earliestImprovementAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "calculatedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "nextEvaluationAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "snapshotRevision" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          }
+        }
+      },
+      "MessageChannel" : {
+        "type" : "string",
+        "enum" : [ "GLOBAL", "SERVER", "PARTY", "PRIVATE" ]
+      },
+      "MessageVisibility" : {
+        "type" : "string",
+        "enum" : [ "PUBLIC", "PRIVATE" ]
+      },
+      "ModerationStatusReasonCode" : {
+        "type" : "string",
+        "enum" : [ "CHAT_BEHAVIOR", "SOCIAL_BEHAVIOR", "REPORT_SYSTEM_USE" ]
+      },
+      "PlayerModerationStatusResponse" : {
+        "description" : "Player-safe projection of the current global moderation status.",
+        "additionalProperties" : false,
+        "type" : "object",
+        "required" : [ "playerId", "status", "reasonCode", "statusSince", "earliestImprovementAt" ],
+        "properties" : {
+          "playerId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/GlobalModerationStatus"
+          },
+          "reasonCode" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/ModerationStatusReasonCode"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "statusSince" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "earliestImprovementAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "PlayerReportRequest" : {
+        "description" : "Player report with a runtime-selected exact message anchor.",
+        "examples" : [ {
+          "reporterPlayerId" : "9ad4b488-49d6-4c72-932b-98bead1fef83",
+          "targetPlayerId" : "6be90520-6c3e-4431-a7f2-d3eadf831e17",
+          "category" : "HARASSMENT",
+          "primaryMessageId" : "28bb4bbf-96c4-4e9c-89b9-132553ee2e34",
+          "origin" : {
+            "runtimeId" : "proxy-eu-1",
+            "serverId" : "lobby-1"
+          },
+          "submittedAt" : "2026-07-22T10:15:30Z",
+          "initialEvidence" : [ ]
+        } ],
+        "type" : "object",
+        "required" : [ "reporterPlayerId", "targetPlayerId", "category", "primaryMessageId", "origin", "submittedAt", "initialEvidence" ],
+        "properties" : {
+          "reporterPlayerId" : {
+            "type" : "string",
+            "examples" : [ "9ad4b488-49d6-4c72-932b-98bead1fef83" ],
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "targetPlayerId" : {
+            "type" : "string",
+            "examples" : [ "6be90520-6c3e-4431-a7f2-d3eadf831e17" ],
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "category" : {
+            "$ref" : "#/components/schemas/ReportCategory"
+          },
+          "primaryMessageId" : {
+            "type" : "string",
+            "examples" : [ "28bb4bbf-96c4-4e9c-89b9-132553ee2e34" ],
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "origin" : {
+            "$ref" : "#/components/schemas/ReportOrigin"
+          },
+          "submittedAt" : {
+            "type" : "string",
+            "examples" : [ "2026-07-22T10:15:30Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "initialEvidence" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EvidenceMessageRequest"
+            }
+          }
+        }
+      },
+      "PolicyDocument" : {
+        "type" : "object",
+        "required" : [ "schemaVersion", "riskRules", "domainThresholds", "automaticConfirmationRules" ],
+        "properties" : {
+          "schemaVersion" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 2,
+            "minimum" : 2,
+            "description" : "Policy document schema version supported by this service release."
+          },
+          "riskRules" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RiskRule"
+            },
+            "description" : "Complete matrix of eight violation types and four severities.",
+            "maxItems" : 32,
+            "minItems" : 32
+          },
+          "domainThresholds" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DomainThreshold"
+            },
+            "description" : "Exactly one restriction threshold for each risk domain.",
+            "maxItems" : 3,
+            "minItems" : 3
+          },
+          "automaticConfirmationRules" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AutomaticConfirmationRule"
+            }
+          }
+        }
+      },
+      "PolicyLifecycleRequest" : {
+        "description" : "Audit reason for a policy lifecycle mutation.",
+        "type" : "object",
+        "required" : [ "reason" ],
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 1,
+            "description" : "Required audit reason."
+          }
+        }
+      },
+      "PolicyStatus" : {
+        "type" : "string",
+        "enum" : [ "DRAFT", "SCHEDULED", "ACTIVE", "RETIRED" ]
+      },
+      "PolicyTaxonomyResponse" : {
+        "description" : "Closed moderation taxonomy used by every policy document.",
+        "type" : "object",
+        "required" : [ "riskDomains", "violationTypes", "severities", "policyStatuses", "automaticConfirmationSources", "automaticConfirmationModes" ],
+        "properties" : {
+          "riskDomains" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RiskDomain"
+            }
+          },
+          "violationTypes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ViolationTypeResponse"
+            }
+          },
+          "severities" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Severity"
+            }
+          },
+          "policyStatuses" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PolicyStatus"
+            }
+          },
+          "automaticConfirmationSources" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AutomaticConfirmationSource"
+            }
+          },
+          "automaticConfirmationModes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AutomaticConfirmationMode"
+            }
+          }
+        }
+      },
+      "PolicyVersionResponse" : {
+        "description" : "Complete immutable snapshot and lifecycle state of a policy version.",
+        "type" : "object",
+        "required" : [ "id", "versionNumber", "status", "document", "draftRevision", "scheduledFor", "activatedAt" ],
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "versionNumber" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/PolicyStatus"
+          },
+          "document" : {
+            "$ref" : "#/components/schemas/PolicyDocument"
+          },
+          "draftRevision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "scheduledFor" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "activatedAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "ProblemDetails" : {
+        "description" : "RFC 9457 problem details returned for rejected moderation API requests.",
+        "examples" : [ {
+          "type" : "https://api.grounds.gg/problems/moderation-intake/422",
+          "title" : "Unprocessable Content",
+          "status" : 422,
+          "detail" : "Evidence is invalid"
+        } ],
+        "type" : "object",
+        "required" : [ "type", "title", "status", "detail" ],
+        "properties" : {
+          "type" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "code" : {
+            "type" : [ "string", "null" ]
+          },
+          "findingId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "ReplacePolicyDraftRequest" : {
+        "description" : "Complete validated document replacing the current draft snapshot.",
+        "type" : "object",
+        "required" : [ "document" ],
+        "properties" : {
+          "document" : {
+            "$ref" : "#/components/schemas/PolicyDocument"
+          }
+        }
+      },
+      "ReportCategory" : {
+        "type" : "string",
+        "enum" : [ "HARASSMENT", "SPAM", "THREAT_OR_HATE", "ADVERTISEMENT_OR_SCAM", "OTHER" ]
+      },
+      "ReportOrigin" : {
+        "type" : "object",
+        "description" : "Runtime origin of a report or evidence message.",
+        "examples" : [ {
+          "runtimeId" : "proxy-eu-1",
+          "serverId" : "lobby-1"
+        } ],
+        "required" : [ "runtimeId", "serverId" ],
+        "properties" : {
+          "runtimeId" : {
+            "type" : "string",
+            "examples" : [ "proxy-eu-1" ]
+          },
+          "serverId" : {
+            "type" : "string",
+            "examples" : [ "lobby-1" ]
+          }
+        }
+      },
+      "ReportReceipt" : {
+        "description" : "Stable technical receipt returned for a report submission.",
+        "examples" : [ {
+          "reportId" : "8ca93f15-2e91-43c8-af84-faa9ea9d5669",
+          "caseId" : "a1637fc1-30ba-4650-b438-8040fadf92f3",
+          "evidenceCaptureId" : "81b1174f-f634-4304-a537-31c6a416af88",
+          "publicReference" : "R-7K3M2Q",
+          "created" : true
+        } ],
+        "type" : "object",
+        "required" : [ "reportId", "caseId", "evidenceCaptureId" ],
+        "properties" : {
+          "reportId" : {
+            "type" : "string",
+            "examples" : [ "8ca93f15-2e91-43c8-af84-faa9ea9d5669" ],
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "caseId" : {
+            "type" : "string",
+            "examples" : [ "a1637fc1-30ba-4650-b438-8040fadf92f3" ],
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "evidenceCaptureId" : {
+            "type" : "string",
+            "examples" : [ "81b1174f-f634-4304-a537-31c6a416af88" ],
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "publicReference" : {
+            "type" : [ "string", "null" ],
+            "pattern" : "^R-[A-HJ-NP-Z2-9]{6}$",
+            "examples" : [ "R-7K3M2Q" ]
+          },
+          "created" : {
+            "type" : "boolean",
+            "examples" : [ true ]
+          }
+        }
+      },
+      "RiskDomain" : {
+        "type" : "string",
+        "enum" : [ "CHAT", "SOCIAL", "REPORT_ABUSE" ]
+      },
+      "RiskLedgerEntrySource" : {
+        "type" : "string",
+        "enum" : [ "MANUAL", "AUTOMATIC", "CORRECTION" ]
+      },
+      "RiskLedgerQueryItemResponse" : {
+        "description" : "Internal risk ledger projection available only to authorized supporters.",
+        "type" : "object",
+        "required" : [ "ledgerEntryId", "findingId", "correctionId", "originLedgerEntryId", "riskDomain", "violationType", "severity", "signedPoints", "effectiveAt", "expiresAt", "policyVersionId", "source" ],
+        "properties" : {
+          "ledgerEntryId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "findingId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "correctionId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "originLedgerEntryId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "riskDomain" : {
+            "$ref" : "#/components/schemas/RiskDomain"
+          },
+          "violationType" : {
+            "$ref" : "#/components/schemas/ViolationType"
+          },
+          "severity" : {
+            "$ref" : "#/components/schemas/Severity"
+          },
+          "signedPoints" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "effectiveAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "policyVersionId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "source" : {
+            "$ref" : "#/components/schemas/RiskLedgerEntrySource"
+          }
+        }
+      },
+      "RiskLedgerQueryPageResponse" : {
+        "description" : "Cursor page of internal risk ledger entries.",
+        "type" : "object",
+        "required" : [ "items", "nextCursor" ],
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RiskLedgerQueryItemResponse"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "RiskRule" : {
+        "type" : "object",
+        "required" : [ "violationType", "severity", "points", "ttl", "enabled" ],
+        "properties" : {
+          "violationType" : {
+            "$ref" : "#/components/schemas/ViolationType"
+          },
+          "severity" : {
+            "$ref" : "#/components/schemas/Severity"
+          },
+          "points" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1,
+            "description" : "Positive risk points contributed by this rule."
+          },
+          "ttl" : {
+            "description" : "Positive ISO-8601 duration for which the risk contribution remains active.",
+            "type" : "string",
+            "examples" : [ "P14D" ],
+            "$ref" : "#/components/schemas/Duration"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "SchedulePolicyRequest" : {
+        "description" : "Future activation time and audit reason for a policy draft.",
+        "type" : "object",
+        "required" : [ "activateAt", "reason" ],
+        "properties" : {
+          "activateAt" : {
+            "description" : "Future UTC time at which the policy should become active.",
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 2000,
+            "minLength" : 1,
+            "description" : "Required audit reason."
+          }
+        }
+      },
+      "Severity" : {
+        "type" : "string",
+        "enum" : [ "LOW", "MEDIUM", "HIGH", "CRITICAL" ]
+      },
+      "SignatureStatus" : {
+        "type" : "string",
+        "enum" : [ "VALID", "INVALID", "UNSIGNED", "NOT_APPLICABLE" ]
+      },
+      "SystemMessageReportRequest" : {
+        "description" : "Exact message report produced by an authorized detector.",
+        "examples" : [ {
+          "targetPlayerId" : "6be90520-6c3e-4431-a7f2-d3eadf831e17",
+          "category" : "SPAM",
+          "primaryMessageId" : "28bb4bbf-96c4-4e9c-89b9-132553ee2e34",
+          "origin" : {
+            "runtimeId" : "proxy-eu-1",
+            "serverId" : "lobby-1"
+          },
+          "submittedAt" : "2026-07-22T10:15:30Z",
+          "source" : "static-filter",
+          "detectedCategory" : "SPAM",
+          "detectorVersion" : "2026.07",
+          "ruleId" : "repeated-message",
+          "scores" : {
+            "spam" : 0.97
+          },
+          "initialEvidence" : [ ]
+        } ],
+        "type" : "object",
+        "required" : [ "targetPlayerId", "category", "primaryMessageId", "origin", "submittedAt", "source", "detectedCategory", "detectorVersion", "ruleId", "initialEvidence" ],
+        "properties" : {
+          "targetPlayerId" : {
+            "type" : "string",
+            "examples" : [ "6be90520-6c3e-4431-a7f2-d3eadf831e17" ],
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "category" : {
+            "$ref" : "#/components/schemas/ReportCategory"
+          },
+          "primaryMessageId" : {
+            "type" : "string",
+            "examples" : [ "28bb4bbf-96c4-4e9c-89b9-132553ee2e34" ],
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "origin" : {
+            "$ref" : "#/components/schemas/ReportOrigin"
+          },
+          "submittedAt" : {
+            "type" : "string",
+            "examples" : [ "2026-07-22T10:15:30Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "source" : {
+            "type" : "string",
+            "examples" : [ "static-filter" ]
+          },
+          "detectedCategory" : {
+            "$ref" : "#/components/schemas/ReportCategory"
+          },
+          "detectorVersion" : {
+            "type" : "string",
+            "examples" : [ "2026.07" ]
+          },
+          "ruleId" : {
+            "type" : "string",
+            "examples" : [ "repeated-message" ]
+          },
+          "scores" : {
+            "type" : [ "object", "null" ],
+            "additionalProperties" : {
+              "type" : "number",
+              "format" : "double"
+            },
+            "examples" : [ {
+              "spam" : 0.97
+            } ]
+          },
+          "initialEvidence" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EvidenceMessageRequest"
+            }
+          }
+        }
+      },
+      "UUID" : {
+        "type" : "string",
+        "format" : "uuid",
+        "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+      },
+      "ViolationType" : {
+        "type" : "string",
+        "enum" : [ "ABUSIVE_LANGUAGE", "SPAM", "ADVERTISEMENT_OR_SCAM", "HARASSMENT", "THREAT_OR_HATE", "SEXUAL_CONTENT", "PERSONAL_DATA_EXPOSURE", "REPORT_ABUSE" ]
+      },
+      "ViolationTypeResponse" : {
+        "type" : "object",
+        "description" : "Fixed violation type and its code-defined risk domain.",
+        "required" : [ "type", "domain" ],
+        "properties" : {
+          "type" : {
+            "$ref" : "#/components/schemas/ViolationType"
+          },
+          "domain" : {
+            "$ref" : "#/components/schemas/RiskDomain"
+          }
+        }
+      }
+    },
+    "securitySchemes" : {
+      "bearerAuth" : {
+        "type" : "http",
+        "description" : "Service JWT with the grounds-services audience.",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
+      }
+    }
+  },
+  "info" : {
+    "description" : "Internal REST API for moderation reports, evidence, and policy management.",
+    "title" : "Moderation API",
+    "version" : "0.1.1"
+  },
+  "tags" : [ {
+    "name" : "Automatic moderation findings"
+  }, {
+    "name" : "Moderation evidence"
+  }, {
+    "name" : "Moderation findings"
+  }, {
+    "name" : "Moderation intake"
+  }, {
+    "name" : "Moderation policy"
+  }, {
+    "name" : "Moderation status"
+  } ],
+  "paths" : {
+    "/v1/moderation/cases/{caseId}/findings" : {
+      "post" : {
+        "summary" : "Confirm a finding from a moderation case",
+        "description" : "Confirms one manual finding from primary and optional supporting case evidence.",
+        "tags" : [ "Moderation findings" ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "caseId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Stable UUID for one logical finding confirmation.",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Authenticated portal actor supplied by the trusted portal BFF.",
+          "in" : "header",
+          "name" : "X-Grounds-Actor-Id",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Exact effective portal permission for this operation.",
+          "in" : "header",
+          "name" : "X-Grounds-Portal-Permission",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "moderation.finding.confirm" ]
+          }
+        }, {
+          "description" : "Optional request correlation identifier.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ConfirmManualFindingRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Finding confirmed.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfirmManualFindingResponse"
+                }
+              }
+            }
+          },
+          "200" : {
+            "description" : "Idempotent replay of a confirmed finding.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfirmManualFindingResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid JSON or idempotency key.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Portal actor context is not authorized.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "The moderation case was not found.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Case, idempotency, or finding identity conflicts with state.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "The finding classification or evidence selection is invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "get" : {
+        "summary" : "List findings for a moderation case",
+        "description" : "Returns stable cursor-based safe finding projections for one case.",
+        "tags" : [ "Moderation findings" ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "caseId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Opaque cursor returned by the previous page.",
+          "in" : "query",
+          "name" : "cursor",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "description" : "Page size from 1 to 100; defaults to 50.",
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "maximum" : 100,
+            "minimum" : 1,
+            "type" : [ "integer", "null" ],
+            "default" : 50
+          },
+          "required" : true
+        }, {
+          "description" : "Authenticated portal actor supplied by the trusted portal BFF.",
+          "in" : "header",
+          "name" : "X-Grounds-Actor-Id",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Exact effective portal permission for this operation.",
+          "in" : "header",
+          "name" : "X-Grounds-Portal-Permission",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "moderation.risk.view" ]
+          }
+        }, {
+          "description" : "Optional request correlation identifier.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Finding page.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FindingQueryPageResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Portal actor is not authorized.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "Cursor or limit is invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/evidence-captures/{captureId}/completion" : {
+      "put" : {
+        "summary" : "Complete an evidence capture",
+        "description" : "Idempotently transitions an open evidence capture to a terminal state.",
+        "tags" : [ "Moderation evidence" ],
+        "parameters" : [ {
+          "description" : "Evidence capture identifier.",
+          "in" : "path",
+          "name" : "captureId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Stable UUID for one logical completion operation.",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Request identifier to propagate, or omit to generate one.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CompleteEvidenceCaptureRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Evidence capture completed or the operation was replayed.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EvidenceCompletionReceipt"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid JSON, path identifier, or header.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "The service is unauthorized or does not own the capture.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "The evidence capture does not exist.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The operation, expected count, or capture state conflicts.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "The requested terminal status or reason is invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/evidence-captures/{captureId}/messages" : {
+      "post" : {
+        "summary" : "Append evidence messages",
+        "description" : "Atomically appends immutable context to an open evidence capture.",
+        "tags" : [ "Moderation evidence" ],
+        "parameters" : [ {
+          "description" : "Evidence capture identifier.",
+          "in" : "path",
+          "name" : "captureId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Stable UUID for one logical append operation.",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Request identifier to propagate, or omit to generate one.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AppendEvidenceMessagesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Evidence append accepted or replayed.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EvidenceAppendReceipt"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid JSON, path identifier, or header.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "The service is unauthorized or does not own the capture.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "The evidence capture does not exist.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The operation, message, or capture state conflicts.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "The evidence batch violates capture rules.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "The configured append limit was exceeded.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/findings/{findingId}/corrections" : {
+      "post" : {
+        "summary" : "Correct a confirmed finding",
+        "description" : "Invalidates or reclassifies the current finding version without mutating history.",
+        "tags" : [ "Moderation findings" ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "findingId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Stable UUID for one logical finding correction.",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Authenticated portal actor supplied by the trusted portal BFF.",
+          "in" : "header",
+          "name" : "X-Grounds-Actor-Id",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Exact effective portal permission for this operation.",
+          "in" : "header",
+          "name" : "X-Grounds-Portal-Permission",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "moderation.finding.correct" ]
+          }
+        }, {
+          "description" : "Optional request correlation identifier.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CorrectFindingRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Finding corrected.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CorrectFindingResponse"
+                }
+              }
+            }
+          },
+          "200" : {
+            "description" : "Idempotent replay of a finding correction.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CorrectFindingResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid JSON or idempotency key.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Portal actor is not authorized.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Finding was not found.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Finding correction conflicts.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "Correction request is invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/player-reports" : {
+      "post" : {
+        "summary" : "Submit a player report",
+        "description" : "Stores a player report and immutable initial evidence under the exact message anchor.",
+        "tags" : [ "Moderation intake" ],
+        "parameters" : [ {
+          "description" : "Stable UUID for one logical submission attempt.",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Request identifier to propagate, or omit to generate one.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlayerReportRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Idempotent replay of an existing report.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReportReceipt"
+                }
+              }
+            }
+          },
+          "201" : {
+            "description" : "Player report accepted.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReportReceipt"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid JSON or header.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "The service subject is not authorized.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The idempotency key conflicts with another payload.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "The evidence or report category is invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "The configured intake limit was exceeded.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/players/{playerId}/findings" : {
+      "get" : {
+        "summary" : "List findings for a player",
+        "description" : "Returns stable cursor-based safe finding projections for one player.",
+        "tags" : [ "Moderation findings" ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "playerId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Opaque cursor returned by the previous page.",
+          "in" : "query",
+          "name" : "cursor",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "description" : "Page size from 1 to 100; defaults to 50.",
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "maximum" : 100,
+            "minimum" : 1,
+            "type" : [ "integer", "null" ],
+            "default" : 50
+          },
+          "required" : true
+        }, {
+          "description" : "Authenticated portal actor supplied by the trusted portal BFF.",
+          "in" : "header",
+          "name" : "X-Grounds-Actor-Id",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Exact effective portal permission for this operation.",
+          "in" : "header",
+          "name" : "X-Grounds-Portal-Permission",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "moderation.risk.view" ]
+          }
+        }, {
+          "description" : "Optional request correlation identifier.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Finding page.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FindingQueryPageResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Portal actor is not authorized.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "Cursor or limit is invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/players/{playerId}/risk-ledger" : {
+      "get" : {
+        "summary" : "List the internal risk ledger for a player",
+        "description" : "Returns signed internal risk contributions to authorized portal supporters.",
+        "tags" : [ "Moderation findings" ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "playerId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Opaque cursor returned by the previous page.",
+          "in" : "query",
+          "name" : "cursor",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "description" : "Page size from 1 to 100; defaults to 50.",
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "maximum" : 100,
+            "minimum" : 1,
+            "type" : [ "integer", "null" ],
+            "default" : 50
+          },
+          "required" : true
+        }, {
+          "description" : "Authenticated portal actor supplied by the trusted portal BFF.",
+          "in" : "header",
+          "name" : "X-Grounds-Actor-Id",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Exact effective portal permission for this operation.",
+          "in" : "header",
+          "name" : "X-Grounds-Portal-Permission",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "moderation.risk.view" ]
+          }
+        }, {
+          "description" : "Optional request correlation identifier.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Risk ledger page.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RiskLedgerQueryPageResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Portal actor is not authorized.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "Cursor or limit is invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/players/{playerId}/status" : {
+      "get" : {
+        "summary" : "Get a player's moderation status",
+        "description" : "Returns the player-safe global moderation status projection.",
+        "tags" : [ "Moderation status" ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "playerId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Player-safe moderation status.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlayerModerationStatusResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing."
+          },
+          "403" : {
+            "description" : "Status reader is not authorized."
+          },
+          "503" : {
+            "description" : "Moderation status is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/players/{playerId}/status/internal" : {
+      "get" : {
+        "summary" : "Get internal moderation status details",
+        "description" : "Returns the detailed status calculation to authorized portal supporters.",
+        "tags" : [ "Moderation status" ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "playerId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Authenticated portal actor supplied by the trusted portal BFF.",
+          "in" : "header",
+          "name" : "X-Grounds-Actor-Id",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Exact effective portal permission for this operation.",
+          "in" : "header",
+          "name" : "X-Grounds-Portal-Permission",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "moderation.risk.view" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Internal moderation status details.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InternalModerationStatusResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing."
+          },
+          "403" : {
+            "description" : "Portal actor is not authorized."
+          },
+          "503" : {
+            "description" : "Moderation status is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/policy-versions" : {
+      "get" : {
+        "summary" : "List moderation policy versions",
+        "description" : "Lists policy versions newest first, optionally filtered by lifecycle status.",
+        "tags" : [ "Moderation policy" ],
+        "parameters" : [ {
+          "description" : "Optional exact policy lifecycle status.",
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/PolicyStatus"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "description" : "Authenticated portal actor identifier supplied by the trusted portal BFF.",
+          "in" : "header",
+          "name" : "X-Grounds-Actor-Id",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Exact effective portal permission for this operation.",
+          "in" : "header",
+          "name" : "X-Grounds-Portal-Permission",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "moderation.policy.view" ]
+          }
+        }, {
+          "description" : "Request identifier to propagate, or omit to generate one.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Matching moderation policy versions.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/PolicyVersionResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Portal actor context is not authorized.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "post" : {
+        "summary" : "Create a moderation policy draft",
+        "description" : "Copies the active or explicitly selected policy version into a new draft.",
+        "tags" : [ "Moderation policy" ],
+        "parameters" : [ {
+          "description" : "Stable UUID for one logical policy mutation.",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Authenticated portal actor identifier supplied by the trusted portal BFF.",
+          "in" : "header",
+          "name" : "X-Grounds-Actor-Id",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Exact effective portal permission for this operation.",
+          "in" : "header",
+          "name" : "X-Grounds-Portal-Permission",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "moderation.policy.edit" ]
+          }
+        }, {
+          "description" : "Request identifier to propagate, or omit to generate one.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreatePolicyDraftRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Idempotent replay of the previously created draft.",
+            "headers" : {
+              "ETag" : {
+                "description" : "Quoted draft revision used for optimistic updates.",
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyVersionResponse"
+                }
+              }
+            }
+          },
+          "201" : {
+            "description" : "Moderation policy draft created.",
+            "headers" : {
+              "ETag" : {
+                "description" : "Quoted draft revision used for optimistic updates.",
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyVersionResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid JSON or idempotency key.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Portal actor context is not authorized.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "The selected base policy version was not found.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The idempotency key conflicts with another policy request.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "The selected policy document is invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/policy-versions/{id}" : {
+      "put" : {
+        "summary" : "Replace a moderation policy draft",
+        "description" : "Validates and replaces the complete draft document at the expected revision.",
+        "tags" : [ "Moderation policy" ],
+        "parameters" : [ {
+          "description" : "Draft policy version identifier.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Stable UUID for one logical policy mutation.",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Quoted current draft revision returned in the ETag header.",
+          "in" : "header",
+          "name" : "If-Match",
+          "required" : true,
+          "schema" : {
+            "pattern" : "^\"[1-9][0-9]*\"$",
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Authenticated portal actor identifier supplied by the trusted portal BFF.",
+          "in" : "header",
+          "name" : "X-Grounds-Actor-Id",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Exact effective portal permission for this operation.",
+          "in" : "header",
+          "name" : "X-Grounds-Portal-Permission",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "moderation.policy.edit" ]
+          }
+        }, {
+          "description" : "Request identifier to propagate, or omit to generate one.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReplacePolicyDraftRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Draft replaced or an identical operation replayed.",
+            "headers" : {
+              "ETag" : {
+                "description" : "Quoted updated draft revision used for optimistic updates.",
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyVersionResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid JSON, idempotency key, or If-Match header.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Portal actor context is not authorized.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Policy version was not found.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The revision is stale, the policy is immutable, or idempotency conflicts.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "The replacement policy document is invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "get" : {
+        "summary" : "Read a moderation policy version",
+        "description" : "Returns the complete policy snapshot and its current draft revision ETag.",
+        "tags" : [ "Moderation policy" ],
+        "parameters" : [ {
+          "description" : "Policy version identifier.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Authenticated portal actor identifier supplied by the trusted portal BFF.",
+          "in" : "header",
+          "name" : "X-Grounds-Actor-Id",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Exact effective portal permission for this operation.",
+          "in" : "header",
+          "name" : "X-Grounds-Portal-Permission",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "moderation.policy.view" ]
+          }
+        }, {
+          "description" : "Request identifier to propagate, or omit to generate one.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Moderation policy version.",
+            "headers" : {
+              "ETag" : {
+                "description" : "Quoted draft revision used for optimistic updates.",
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyVersionResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Portal actor context is not authorized.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Policy version was not found.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/policy-versions/{id}/activate" : {
+      "post" : {
+        "summary" : "Activate a moderation policy version",
+        "description" : "Atomically retires the active policy and activates the selected draft.",
+        "tags" : [ "Moderation policy" ],
+        "parameters" : [ {
+          "description" : "Draft policy version identifier.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Stable UUID for one logical policy mutation.",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Quoted current draft revision returned in the ETag header.",
+          "in" : "header",
+          "name" : "If-Match",
+          "required" : true,
+          "schema" : {
+            "pattern" : "^\"[1-9][0-9]*\"$",
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Authenticated portal actor identifier supplied by the trusted portal BFF.",
+          "in" : "header",
+          "name" : "X-Grounds-Actor-Id",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Exact effective portal permission for this operation.",
+          "in" : "header",
+          "name" : "X-Grounds-Portal-Permission",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "moderation.policy.activate" ]
+          }
+        }, {
+          "description" : "Request identifier to propagate, or omit to generate one.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PolicyLifecycleRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Policy version activated or an identical operation replayed.",
+            "headers" : {
+              "ETag" : {
+                "description" : "Quoted revision of the activated snapshot.",
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyVersionResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid JSON, idempotency key, or If-Match header.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Portal actor context is not authorized.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Policy version was not found.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The revision, lifecycle state, active policy, or idempotency key conflicts.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "The audit reason or policy document is invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/policy-versions/{id}/schedule" : {
+      "post" : {
+        "summary" : "Schedule a moderation policy version",
+        "description" : "Freezes a draft and schedules it for activation at a future UTC time.",
+        "tags" : [ "Moderation policy" ],
+        "parameters" : [ {
+          "description" : "Draft policy version identifier.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Stable UUID for one logical policy mutation.",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Quoted current draft revision returned in the ETag header.",
+          "in" : "header",
+          "name" : "If-Match",
+          "required" : true,
+          "schema" : {
+            "pattern" : "^\"[1-9][0-9]*\"$",
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Authenticated portal actor identifier supplied by the trusted portal BFF.",
+          "in" : "header",
+          "name" : "X-Grounds-Actor-Id",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Exact effective portal permission for this operation.",
+          "in" : "header",
+          "name" : "X-Grounds-Portal-Permission",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "moderation.policy.activate" ]
+          }
+        }, {
+          "description" : "Request identifier to propagate, or omit to generate one.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SchedulePolicyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Policy version scheduled or an identical operation replayed.",
+            "headers" : {
+              "ETag" : {
+                "description" : "Quoted draft revision for this immutable snapshot.",
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyVersionResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid JSON, idempotency key, or If-Match header.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Portal actor context is not authorized.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Policy version was not found.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The revision, lifecycle state, schedule slot, or idempotency key conflicts.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "The activation time, reason, or policy document is invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/policy-versions/{id}/unschedule" : {
+      "post" : {
+        "summary" : "Unschedule a moderation policy version",
+        "description" : "Returns a scheduled policy version to an editable draft.",
+        "tags" : [ "Moderation policy" ],
+        "parameters" : [ {
+          "description" : "Scheduled policy version identifier.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Stable UUID for one logical policy mutation.",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Quoted current draft revision returned in the ETag header.",
+          "in" : "header",
+          "name" : "If-Match",
+          "required" : true,
+          "schema" : {
+            "pattern" : "^\"[1-9][0-9]*\"$",
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Authenticated portal actor identifier supplied by the trusted portal BFF.",
+          "in" : "header",
+          "name" : "X-Grounds-Actor-Id",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Exact effective portal permission for this operation.",
+          "in" : "header",
+          "name" : "X-Grounds-Portal-Permission",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "moderation.policy.activate" ]
+          }
+        }, {
+          "description" : "Request identifier to propagate, or omit to generate one.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PolicyLifecycleRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Policy version unscheduled or an identical operation replayed.",
+            "headers" : {
+              "ETag" : {
+                "description" : "Quoted current draft revision for future updates.",
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyVersionResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid JSON, idempotency key, or If-Match header.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Portal actor context is not authorized.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Policy version was not found.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The revision, lifecycle state, or idempotency key conflicts.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "The audit reason is invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/reports/{reportId}/automatic-finding-decisions" : {
+      "post" : {
+        "summary" : "Record an automatic finding decision",
+        "description" : "Evaluates one classification against the stored system report and active policy.",
+        "tags" : [ "Automatic moderation findings" ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "reportId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Stable UUID for one logical automatic decision request.",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Optional request correlation identifier.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AutomaticFindingDecisionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Automatic finding decision recorded.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AutomaticFindingDecisionResponse"
+                }
+              }
+            }
+          },
+          "200" : {
+            "description" : "Idempotent decision replay.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AutomaticFindingDecisionResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid JSON or idempotency key.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Stored source and subject do not match.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Moderation report was not found.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Stored operation or case state conflicts.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "Classification or report context is invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/system-message-reports" : {
+      "post" : {
+        "summary" : "Submit an exact system message report",
+        "description" : "Stores an authorized detector signal and immutable evidence without a public reference.",
+        "tags" : [ "Moderation intake" ],
+        "parameters" : [ {
+          "description" : "Stable UUID for one logical submission attempt.",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Request identifier to propagate, or omit to generate one.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SystemMessageReportRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Idempotent replay of an existing report.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReportReceipt"
+                }
+              }
+            }
+          },
+          "201" : {
+            "description" : "System message report accepted.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReportReceipt"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Invalid JSON or header.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "The service subject or system source is not authorized.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The idempotency key conflicts with another payload.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422" : {
+            "description" : "The evidence or detector metadata is invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "The configured intake limit was exceeded.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503" : {
+            "description" : "Moderation storage is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/taxonomy" : {
+      "get" : {
+        "summary" : "Read the moderation taxonomy",
+        "description" : "Returns the closed code-defined taxonomy and fixed domain mappings.",
+        "tags" : [ "Moderation policy" ],
+        "parameters" : [ {
+          "description" : "Authenticated portal actor identifier supplied by the trusted portal BFF.",
+          "in" : "header",
+          "name" : "X-Grounds-Actor-Id",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "description" : "Exact effective portal permission for this operation.",
+          "in" : "header",
+          "name" : "X-Grounds-Portal-Permission",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ],
+            "enum" : [ "moderation.policy.view" ]
+          }
+        }, {
+          "description" : "Request identifier to propagate, or omit to generate one.",
+          "in" : "header",
+          "name" : "X-Request-Id",
+          "required" : false,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Moderation taxonomy.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PolicyTaxonomyResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Portal actor context is not authorized.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    }
+  },
+  "servers" : [ {
+    "url" : "http://localhost:8080",
+    "description" : "Auto generated value"
+  }, {
+    "url" : "http://0.0.0.0:8080",
+    "description" : "Auto generated value"
+  } ]
+}
