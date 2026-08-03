@@ -2,6 +2,13 @@
   "schemaVersion": 1,
   "sources": [
     {
+      "id": "service-maps",
+      "title": "Maps API",
+      "slug": "maps",
+      "path": "service-maps/openapi.json",
+      "default": false
+    },
+    {
       "id": "service-moderation",
       "title": "Moderation API",
       "slug": "moderation",

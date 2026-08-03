@@ -1,0 +1,577 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "description" : "The registry for Minecraft maps: what exists, which versions were published, and which version each environment serves.\n\n**Bundles do not pass through this API.** An upload is a presigned URL the client PUTs to directly, and game servers read published content from the CDN — they never call this service.\n\n**Publishing is not going live.** A published version is merely pinnable; moving a pin is what changes the map every player loads, and it is granted separately.",
+    "title" : "Maps API",
+    "version" : "local-SNAPSHOT"
+  },
+  "tags" : [ {
+    "name" : "Maps",
+    "description" : "The catalogue: creating, listing and forking maps."
+  }, {
+    "name" : "Versions",
+    "description" : "Uploading a world, committing a version and publishing it."
+  }, {
+    "name" : "Pins",
+    "description" : "Which version an environment serves. Going live and rolling back."
+  } ],
+  "components" : {
+    "securitySchemes" : {
+      "keycloakBearer" : {
+        "type" : "http",
+        "description" : "A Keycloak access token carrying `aud: service-maps`. Authorisation is by the `groups` claim, or by owning the `u/<sub>` namespace — except moving a pin, which is never granted by ownership.",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
+      }
+    },
+    "schemas" : {
+      "CommitVersionRequest" : {
+        "type" : "object",
+        "properties" : {
+          "uploadId" : {
+            "type" : [ "string", "null" ]
+          },
+          "sourceSha256" : {
+            "type" : [ "string", "null" ]
+          },
+          "parentVersion" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "note" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "CreateMapRequest" : {
+        "type" : "object",
+        "required" : [ "address" ],
+        "properties" : {
+          "address" : {
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : [ "string", "null" ]
+          },
+          "kind" : {
+            "type" : [ "string", "null" ]
+          },
+          "stateful" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "ForkRequest" : {
+        "type" : "object",
+        "required" : [ "target" ],
+        "properties" : {
+          "target" : {
+            "type" : "string"
+          },
+          "fromVersion" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "displayName" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "Instant" : {
+        "type" : "string",
+        "format" : "date-time",
+        "examples" : [ "2022-03-10T16:15:50Z" ]
+      },
+      "MapDto" : {
+        "type" : "object",
+        "required" : [ "address", "displayName", "kind", "trust", "ownerSub", "createdAt" ],
+        "properties" : {
+          "address" : {
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "stateful" : {
+            "type" : "boolean"
+          },
+          "trust" : {
+            "type" : "string"
+          },
+          "ownerSub" : {
+            "type" : "string"
+          },
+          "forkedFrom" : {
+            "type" : [ "string", "null" ]
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "MovePinRequest" : {
+        "type" : "object",
+        "properties" : {
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "PublishVersionRequest" : {
+        "type" : "object",
+        "required" : [ "bundleSha256" ],
+        "properties" : {
+          "bundleSha256" : {
+            "type" : "string"
+          },
+          "manifestSha256" : {
+            "type" : [ "string", "null" ]
+          },
+          "sizeBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "presentChunks" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "estLoadedMib" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          }
+        }
+      }
+    }
+  },
+  "paths" : {
+    "/v1/maps" : {
+      "get" : {
+        "summary" : "List maps",
+        "description" : "Without a review group a caller sees first-party maps and their own, and nothing else.",
+        "tags" : [ "Maps" ],
+        "parameters" : [ {
+          "name" : "namespace",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/MapDto"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "security" : [ {
+          "keycloakBearer" : [ ]
+        } ]
+      },
+      "post" : {
+        "summary" : "Create a map",
+        "description" : "Trust and owner are derived, never taken from the request: a creator asking to be first-party is exactly the request to refuse.",
+        "tags" : [ "Maps" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateMapRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "keycloakBearer" : [ ]
+        } ]
+      }
+    },
+    "/v1/maps/{address}" : {
+      "get" : {
+        "summary" : "Read one map",
+        "tags" : [ "Maps" ],
+        "parameters" : [ {
+          "name" : "address",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : ".+"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "security" : [ {
+          "keycloakBearer" : [ ]
+        } ]
+      }
+    },
+    "/v1/maps/{address}/forks" : {
+      "post" : {
+        "summary" : "Fork a map",
+        "description" : "A new map from an existing version. Copies no bytes, starts its own version counter at 1, and inherits trust from the source — only ever stricter.",
+        "tags" : [ "Maps" ],
+        "parameters" : [ {
+          "name" : "address",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : ".+"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ForkRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "keycloakBearer" : [ ]
+        } ]
+      }
+    },
+    "/v1/maps/{address}/pins" : {
+      "get" : {
+        "summary" : "Where this map is live",
+        "description" : "Read from the record, not from the published pin file: the file is a projection and can lag a move, so it cannot tell \"not live\" from \"live but not written yet\".",
+        "tags" : [ "Pins" ],
+        "parameters" : [ {
+          "name" : "address",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : ".+"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "security" : [ {
+          "keycloakBearer" : [ ]
+        } ]
+      }
+    },
+    "/v1/maps/{address}/pins/{environment}" : {
+      "post" : {
+        "summary" : "Move a pin",
+        "description" : "Changes the version this environment serves. Going live and rolling back are the same call; nothing is deleted either way. Never granted by ownership.",
+        "tags" : [ "Pins" ],
+        "parameters" : [ {
+          "name" : "address",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : ".+"
+          }
+        }, {
+          "name" : "environment",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MovePinRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "keycloakBearer" : [ ]
+        } ]
+      }
+    },
+    "/v1/maps/{address}/uploads" : {
+      "post" : {
+        "summary" : "Open an upload",
+        "description" : "Returns a presigned URL the client PUTs the world to directly. The bytes never enter this service, which is also what keeps a large publish clear of the edge's body limit.",
+        "tags" : [ "Versions" ],
+        "parameters" : [ {
+          "name" : "address",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : ".+"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "security" : [ {
+          "keycloakBearer" : [ ]
+        } ]
+      }
+    },
+    "/v1/maps/{address}/versions" : {
+      "get" : {
+        "summary" : "List versions",
+        "tags" : [ "Versions" ],
+        "parameters" : [ {
+          "name" : "address",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : ".+"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "security" : [ {
+          "keycloakBearer" : [ ]
+        } ]
+      },
+      "post" : {
+        "summary" : "Commit a version",
+        "description" : "Allocates the next version number for this map as a draft.",
+        "tags" : [ "Versions" ],
+        "parameters" : [ {
+          "name" : "address",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : ".+"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CommitVersionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "keycloakBearer" : [ ]
+        } ]
+      }
+    },
+    "/v1/maps/{address}/versions/{version}/publish" : {
+      "post" : {
+        "summary" : "Publish a version",
+        "description" : "Promotes the uploaded object into a public bucket and makes the version pinnable. That copy is the moderation gate. Publishing does not put anything in front of players.",
+        "tags" : [ "Versions" ],
+        "parameters" : [ {
+          "name" : "address",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : ".+"
+          }
+        }, {
+          "name" : "version",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PublishVersionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "keycloakBearer" : [ ]
+        } ]
+      }
+    }
+  },
+  "servers" : [ {
+    "url" : "http://localhost:9000",
+    "description" : "Auto generated value"
+  }, {
+    "url" : "http://0.0.0.0:9000",
+    "description" : "Auto generated value"
+  } ]
+}
