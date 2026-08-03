@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "apidocs-demo",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-08-01",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // The asset server must not rewrite or redirect on its own: its HTML
+    // handling redirects unknown paths to `/`, which escapes the base path.
+    "html_handling": "none",
+    "not_found_handling": "none",
+    // The Worker owns routing: it redirects `/` to the base path and strips the
+    // base path before reading an asset, so assets must not answer first.
+    "run_worker_first": true
+  }
+}
