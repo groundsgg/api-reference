@@ -21,6 +21,13 @@
       "slug": "permissions",
       "path": "service-permissions/openapi.json",
       "default": true
+    },
+    {
+      "id": "service-player",
+      "title": "Player API",
+      "slug": "player",
+      "path": "service-player/openapi.json",
+      "default": false
     }
   ]
 }
