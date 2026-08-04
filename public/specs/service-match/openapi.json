@@ -1,0 +1,609 @@
+{
+  "openapi" : "3.1.0",
+  "components" : {
+    "schemas" : {
+      "AssignmentResponse" : {
+        "description" : "The server a matched player should be routed to.",
+        "type" : "object",
+        "required" : [ "matchId", "gameServerName", "address" ],
+        "properties" : {
+          "matchId" : {
+            "type" : "string"
+          },
+          "gameServerName" : {
+            "type" : "string",
+            "description" : "The Agones GameServer name, which is also the Velocity backend name."
+          },
+          "address" : {
+            "type" : "string",
+            "description" : "Fallback route. The routing pipeline resolves the name; the raw endpoint ships alongside it for the case where it has not."
+          },
+          "port" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "BandRequestBody" : {
+        "description" : "band(t) = max(b0, k*sigma) + w*floor(waitSeconds/sSeconds). Any field that is absent, null or not positive falls back to its default — the same rule the gRPC surface applies to a zero, so a caller porting its code keeps the behaviour it had.",
+        "type" : "object",
+        "properties" : {
+          "b0" : {
+            "type" : [ "number", "null" ],
+            "format" : "double"
+          },
+          "k" : {
+            "type" : [ "number", "null" ],
+            "format" : "double"
+          },
+          "w" : {
+            "type" : [ "number", "null" ],
+            "format" : "double"
+          },
+          "sSeconds" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "mercySeconds" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "description" : "After this wait the anchor's band goes unbounded — the whole ladder."
+          },
+          "mutualSeconds" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "description" : "After this wait the anchor stops requiring mutual band overlap."
+          },
+          "SSeconds" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          }
+        }
+      },
+      "CancelTicketResponse" : {
+        "description" : "Whether a ticket was withdrawn.",
+        "type" : "object",
+        "properties" : {
+          "cancelled" : {
+            "type" : "boolean",
+            "description" : "False when the ticket was already past QUEUED — a match had formed — or is not this player's. A legitimate answer, not an error."
+          }
+        }
+      },
+      "EnqueueRequestBody" : {
+        "description" : "Ask for a match in a mode.",
+        "type" : "object",
+        "required" : [ "playerId" ],
+        "properties" : {
+          "playerId" : {
+            "type" : [ "string", "null" ],
+            "description" : "Player UUID — the Keycloak identity, stable across sessions."
+          },
+          "modeId" : {
+            "type" : [ "string", "null" ],
+            "description" : "Mode within the project.",
+            "examples" : [ "bedwars-squads" ]
+          }
+        }
+      },
+      "EnqueueResponse" : {
+        "description" : "The ticket a player now holds.",
+        "type" : "object",
+        "required" : [ "ticketId" ],
+        "properties" : {
+          "ticketId" : {
+            "type" : "string"
+          },
+          "mu" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "The player's current mu for this mode, so a client can show a rating without a second round trip."
+          },
+          "queuePosition" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many tickets are queued for the mode, this one included."
+          }
+        }
+      },
+      "PlayerResultBody" : {
+        "description" : "Where one player finished.",
+        "type" : "object",
+        "properties" : {
+          "playerId" : {
+            "type" : [ "string", "null" ]
+          },
+          "placement" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "description" : "1-based finishing position, lower is better. Ties repeat a placement. Weng-Lin needs a ranking rather than a win/loss bit: without one a multi-team result degrades to winner-versus-rest, which biases the ladder."
+          }
+        }
+      },
+      "ProblemDetails" : {
+        "description" : "RFC 9457 problem details.",
+        "type" : "object",
+        "required" : [ "title", "code" ],
+        "properties" : {
+          "title" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "detail" : {
+            "type" : [ "string", "null" ]
+          },
+          "code" : {
+            "type" : "string",
+            "description" : "Stable machine-readable code.",
+            "examples" : [ "ticket_exists", "unknown_mode", "unknown_match", "not_in_match" ]
+          }
+        }
+      },
+      "QueueStatsResponse" : {
+        "description" : "Queue depth for a mode, for UI.",
+        "type" : "object",
+        "properties" : {
+          "ticketsQueued" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "available" : {
+            "type" : "boolean",
+            "description" : "False when the mode has no matchmaking config — nobody can queue."
+          }
+        }
+      },
+      "RatingResponse" : {
+        "description" : "A player's Weng-Lin rating for one mode. Ratings are global, not per region.",
+        "type" : "object",
+        "properties" : {
+          "mu" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "sigma" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "display" : {
+            "type" : "number",
+            "format" : "double",
+            "description" : "Conservative display rating, mu - 3*sigma."
+          },
+          "gamesPlayed" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "ReportResultRequestBody" : {
+        "description" : "How a match ended.",
+        "type" : "object",
+        "properties" : {
+          "results" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "$ref" : "#/components/schemas/PlayerResultBody"
+            },
+            "description" : "One entry per player. At least one."
+          },
+          "terminationReason" : {
+            "type" : [ "string", "null" ],
+            "description" : "Stored for operators, never interpreted. Defaults to `normal_finish`.",
+            "examples" : [ "normal_finish", "abandoned", "forfeit", "server_crashed" ]
+          }
+        }
+      },
+      "ReportResultResponse" : {
+        "description" : "What the result did.",
+        "type" : "object",
+        "properties" : {
+          "applied" : {
+            "type" : "boolean",
+            "description" : "False when this result had already been recorded — the call was a retry, not an error."
+          },
+          "rated" : {
+            "type" : "boolean",
+            "description" : "True when the match was ranked and ratings actually moved."
+          }
+        }
+      },
+      "TicketResponse" : {
+        "description" : "Where a ticket stands.",
+        "type" : "object",
+        "required" : [ "state" ],
+        "properties" : {
+          "state" : {
+            "type" : "string",
+            "description" : "QUEUED, MATCHED, ASSIGNED, CANCELLED or FAILED.",
+            "examples" : [ "QUEUED" ]
+          },
+          "assignment" : {
+            "description" : "Set exactly when state is ASSIGNED.",
+            "type" : [ "object", "null" ],
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/AssignmentResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "queueDepth" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "UpsertQueueRequestBody" : {
+        "description" : "A mode's matchmaking configuration, as forge pushes it from the `matchmaking:` block in grounds.yaml. There is no hot reload: the next queue tick picks it up.",
+        "type" : "object",
+        "properties" : {
+          "teamSize" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "description" : "Players per team. At least 1."
+          },
+          "teamCount" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "description" : "Teams per match. At least 2 — a match needs an opponent."
+          },
+          "ranked" : {
+            "type" : "boolean",
+            "description" : "Whether results move ratings. Decided here, at configuration time, and never by the result call — that is what stops an ephemeral test workspace polluting the ladder."
+          },
+          "band" : {
+            "description" : "Banding parameters. Omit for the defaults.",
+            "type" : [ "object", "null" ],
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/BandRequestBody"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "UpsertQueueResponse" : {
+        "description" : "Whether the upsert created the mode or replaced an existing config.",
+        "type" : "object",
+        "properties" : {
+          "created" : {
+            "type" : "boolean"
+          }
+        }
+      }
+    },
+    "securitySchemes" : {
+      "bearerAuth" : {
+        "type" : "http",
+        "description" : "Projected ServiceAccount token with the grounds-services audience.",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
+      }
+    }
+  },
+  "info" : {
+    "description" : "The matchmaker: players queue per mode, the service forms MMR-based matches, allocates an Agones GameServer and hands the proxy somewhere to route them. Results reported here are what move the Weng-Lin ladder.\n\nThere is no project or region anywhere in this API. service-match runs inside the project's own vCluster, which is the tenancy boundary — a caller cannot address another project because it cannot reach another project's matchmaker.",
+    "title" : "Match API",
+    "version" : "1.0.0"
+  },
+  "tags" : [ {
+    "name" : "Modes",
+    "description" : "Matchmaking configuration and queue depth per mode."
+  }, {
+    "name" : "Ratings",
+    "description" : "Weng-Lin ratings, global per player and mode."
+  }, {
+    "name" : "Results",
+    "description" : "Report a finished match and move the ladder."
+  }, {
+    "name" : "Tickets",
+    "description" : "Queue for a match, withdraw, and read where a ticket stands."
+  } ],
+  "paths" : {
+    "/v1/match/matches/{matchId}/result" : {
+      "post" : {
+        "summary" : "Report a match result",
+        "description" : "Whether the result actually rates is decided at match-formation time from the mode config, never from this call — so an ephemeral test workspace cannot pollute the ladder however it reports.",
+        "tags" : [ "Results" ],
+        "parameters" : [ {
+          "name" : "matchId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReportResultRequestBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "The result was accepted, or had already been recorded.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReportResultResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Malformed ids, empty results, or a placement below 1."
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          },
+          "403" : {
+            "description" : "A named player was not in this match."
+          },
+          "404" : {
+            "description" : "No match with this id was ever formed."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/match/modes/{modeId}/queue" : {
+      "put" : {
+        "summary" : "Create or replace a mode's matchmaking config",
+        "description" : "Called by forge on deploy from the `matchmaking:` block in grounds.yaml — a trusted server path, never exposed to game clients. There is no hot reload: the next queue tick picks the new config up.",
+        "tags" : [ "Modes" ],
+        "parameters" : [ {
+          "name" : "modeId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpsertQueueRequestBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "The config is stored.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UpsertQueueResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "teamSize or teamCount is out of range."
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/match/modes/{modeId}/queue-stats" : {
+      "get" : {
+        "summary" : "Queue depth for a mode",
+        "description" : "`available` is false when the mode has no matchmaking config at all, in which case `ticketsQueued` is zero because nobody can be waiting — reporting a depth for a mode nobody can queue for would read as a queue that is simply empty.",
+        "tags" : [ "Modes" ],
+        "parameters" : [ {
+          "name" : "modeId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "How busy the queue is.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/QueueStatsResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/match/players/{playerId}/ratings/{modeId}" : {
+      "get" : {
+        "summary" : "Read a player's rating",
+        "description" : "A player who has never played this mode is not an error — they are unrated, and the answer is the defaults the matchmaker would seed their first ticket with.",
+        "tags" : [ "Ratings" ],
+        "parameters" : [ {
+          "name" : "modeId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The rating, or the seeded defaults for an unrated player.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RatingResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "playerId is not a UUID, or modeId is empty."
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/match/tickets" : {
+      "post" : {
+        "summary" : "Queue a player for a mode",
+        "description" : "Rejected with 409 if the player already holds a live ticket — one live ticket per player, worldwide, is what stops a player being committed to two matches.\n\nThere is deliberately no project or region in the body. service-match runs inside the project's own vCluster, so the vCluster is the tenancy boundary: a ticket cannot address another project because it cannot reach another project's matchmaker. Accepting either field here would hand that boundary to the caller.",
+        "tags" : [ "Tickets" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EnqueueRequestBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "The player is queued.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EnqueueResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "playerId or modeId is missing or not a UUID."
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          },
+          "404" : {
+            "description" : "The mode has no matchmaking config."
+          },
+          "409" : {
+            "description" : "The player already holds a live ticket."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/match/tickets/{ticketId}" : {
+      "get" : {
+        "summary" : "Read a ticket",
+        "description" : "The source of truth on reconnect, and the only authority on an assignment: the NATS assignment push is a wakeup, this is the answer.",
+        "tags" : [ "Tickets" ],
+        "parameters" : [ {
+          "name" : "ticketId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The ticket's state, and its assignment once it has one.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TicketResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          },
+          "404" : {
+            "description" : "No such ticket."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "delete" : {
+        "summary" : "Withdraw a ticket",
+        "description" : "Only succeeds while the ticket is still QUEUED — once a match has formed the ticket is committed. `cancelled: false` is the answer for that case and for a ticket that is not this player's; neither is an error.",
+        "tags" : [ "Tickets" ],
+        "parameters" : [ {
+          "name" : "ticketId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "playerId",
+          "in" : "query",
+          "schema" : {
+            "description" : "Checked against the ticket's owner.",
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Whether the ticket was withdrawn.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CancelTicketResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "ticketId or playerId is missing or malformed."
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    }
+  },
+  "servers" : [ {
+    "url" : "http://localhost:9000",
+    "description" : "Auto generated value"
+  }, {
+    "url" : "http://0.0.0.0:9000",
+    "description" : "Auto generated value"
+  } ]
+}
