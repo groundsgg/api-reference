@@ -1,0 +1,875 @@
+{
+  "openapi" : "3.1.0",
+  "components" : {
+    "schemas" : {
+      "HeartbeatRequest" : {
+        "description" : "Every player a proxy still holds, in one call. Batched because a proxy with a thousand players would otherwise send a thousand requests per interval.",
+        "type" : "object",
+        "properties" : {
+          "playerIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            },
+            "description" : "Player UUIDs. One malformed id rejects the whole batch."
+          }
+        }
+      },
+      "HeartbeatResponse" : {
+        "description" : "What the batch did.",
+        "type" : "object",
+        "properties" : {
+          "updated" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Sessions touched."
+          },
+          "missing" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Ids with no session. Not an error: the player logged out between the proxy building this batch and the write landing."
+          }
+        }
+      },
+      "Instant" : {
+        "type" : "string",
+        "format" : "date-time",
+        "examples" : [ "2022-03-10T16:15:50Z" ]
+      },
+      "LoginRequest" : {
+        "description" : "A proxy claiming the network-wide session for a player.",
+        "type" : "object",
+        "required" : [ "playerId" ],
+        "properties" : {
+          "playerId" : {
+            "type" : [ "string", "null" ],
+            "description" : "The player's Minecraft UUID.",
+            "examples" : [ "8f3a1c2e-4b5d-4e6f-8a9b-0c1d2e3f4a5b" ]
+          },
+          "playerName" : {
+            "type" : [ "string", "null" ],
+            "description" : "The name the player logged in with. Optional, but a session created without one cannot be found by name until the player reconnects.",
+            "examples" : [ "Notch" ]
+          },
+          "proxyId" : {
+            "type" : [ "string", "null" ],
+            "description" : "The proxy the player connected to. Optional, and worth sending: a login that names its proxy can take a session over from a different one, which is what a proxy-to-proxy transfer looks like from here. A login without it can only wait out the session TTL.",
+            "examples" : [ "velocity-nl-ams1-7f9c" ]
+          },
+          "region" : {
+            "type" : [ "string", "null" ],
+            "description" : "Where that proxy is. Absent is a legitimate answer, not an error.",
+            "examples" : [ "nl-ams1" ]
+          }
+        }
+      },
+      "NameLookupResponse" : {
+        "description" : "Player id to name, for players who need not be online.",
+        "type" : "object",
+        "properties" : {
+          "names" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "description" : "Ids this service has never seen are absent rather than mapped to a placeholder every caller would have to recognise."
+          }
+        }
+      },
+      "NameSuggestionsResponse" : {
+        "description" : "Tab-complete candidates, capped.",
+        "type" : "object",
+        "required" : [ "playerNames" ],
+        "properties" : {
+          "playerNames" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "PlayerLocale" : {
+        "description" : "A player's chosen interface language.",
+        "type" : "object",
+        "properties" : {
+          "locale" : {
+            "type" : [ "string", "null" ],
+            "description" : "BCP-47 language tag. Null when the player has never chosen one — the caller falls back to the locale the client announces.",
+            "examples" : [ "de-DE" ]
+          }
+        }
+      },
+      "PlayerSession" : {
+        "description" : "A player's live session: who they are and where.",
+        "type" : "object",
+        "required" : [ "playerId" ],
+        "properties" : {
+          "playerId" : {
+            "type" : "string"
+          },
+          "playerName" : {
+            "type" : [ "string", "null" ],
+            "description" : "Absent for a session created by a proxy that sent no name.",
+            "examples" : [ "Notch" ]
+          },
+          "proxyId" : {
+            "type" : [ "string", "null" ],
+            "description" : "The proxy holding the player. Absent for sessions created before proxies declared one.",
+            "examples" : [ "velocity-nl-ams1-7f9c" ]
+          },
+          "serverName" : {
+            "type" : [ "string", "null" ],
+            "description" : "The backend server the player is on. Absent while they are still on the proxy.",
+            "examples" : [ "lobby-2" ]
+          },
+          "region" : {
+            "type" : [ "string", "null" ],
+            "description" : "Where the proxy is. Absent means unknown, which is normal — sessions outlive a rollout.",
+            "examples" : [ "nl-ams1" ]
+          },
+          "connectedAt" : {
+            "description" : "When the session was created.",
+            "type" : "string",
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "Problem" : {
+        "description" : "A failed request, in RFC 9457 problem-details form.",
+        "type" : "object",
+        "properties" : {
+          "title" : {
+            "type" : "string",
+            "description" : "Short, human-readable summary.",
+            "examples" : [ "Player already online" ]
+          },
+          "status" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "HTTP status, repeated in the body.",
+            "examples" : [ 409 ]
+          },
+          "detail" : {
+            "type" : [ "string", "null" ],
+            "description" : "What went wrong with this specific request.",
+            "examples" : [ "The player already holds a session on another proxy." ]
+          },
+          "code" : {
+            "type" : "string",
+            "description" : "Stable machine-readable code. Branch on this, not on the prose.",
+            "examples" : [ "already_online", "invalid_request", "unauthenticated", "store_unavailable" ]
+          }
+        }
+      },
+      "ProxyCounts" : {
+        "description" : "Players per proxy and region, network-wide.",
+        "type" : "object",
+        "properties" : {
+          "proxies" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ProxyPlayerCount"
+            },
+            "description" : "One entry per proxy holding at least one player."
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Everyone online network-wide, which equals the sum of `proxies` — every session belongs to exactly one proxy, unlike backend servers where a player may be on none."
+          }
+        }
+      },
+      "ProxyPlayerCount" : {
+        "type" : "object",
+        "description" : "One proxy's share of the network.",
+        "required" : [ "proxyId", "players" ],
+        "properties" : {
+          "proxyId" : {
+            "type" : "string"
+          },
+          "region" : {
+            "type" : [ "string", "null" ],
+            "description" : "Absent when the session predates the proxy declaring a region."
+          },
+          "players" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "ServerCounts" : {
+        "description" : "Players per backend server, network-wide.",
+        "type" : "object",
+        "properties" : {
+          "servers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ServerPlayerCount"
+            },
+            "description" : "One entry per server holding at least one player. A server nobody is on is absent rather than zero — the caller knows its own server list and can render the rest as empty."
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Everyone online network-wide. Counts players who have not reached a backend server yet, so it can exceed the sum of `servers`."
+          }
+        }
+      },
+      "ServerPlayerCount" : {
+        "type" : "object",
+        "description" : "One backend server's share of the network.",
+        "required" : [ "serverName", "players" ],
+        "properties" : {
+          "serverName" : {
+            "type" : "string"
+          },
+          "players" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "SetLocaleRequest" : {
+        "description" : "Store or clear a language preference.",
+        "type" : "object",
+        "properties" : {
+          "locale" : {
+            "type" : [ "string", "null" ],
+            "description" : "The tag to store; null or blank clears the preference. Stored verbatim — the caller validates it against the languages it actually ships.",
+            "examples" : [ "de-DE" ]
+          }
+        }
+      },
+      "UpdateServerRequest" : {
+        "description" : "The backend server a player has moved to.",
+        "type" : "object",
+        "required" : [ "serverName" ],
+        "properties" : {
+          "serverName" : {
+            "type" : [ "string", "null" ],
+            "examples" : [ "lobby-2" ]
+          }
+        }
+      }
+    },
+    "securitySchemes" : {
+      "bearerAuth" : {
+        "type" : "http",
+        "description" : "The projected ServiceAccount token from /var/run/secrets/grounds/token, with the grounds-services audience.",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
+      }
+    }
+  },
+  "info" : {
+    "description" : "Network-wide player presence: who is online, on which proxy and backend server, under what name, and in which language they want to be spoken to.\n\nA proxy only knows the players connected to itself, so anything that spans proxies — a private message, a party invite, an accurate player count — has to ask here. The session table is the network's single answer to \"is this player online\"; a login is a claim on it, and a second one is refused.\n\nSessions are presence and are deleted on logout. Names outlive them: a separate, never-deleted index is written at every login, which is what lets a leaderboard or a match history show a name rather than a raw UUID.",
+    "title" : "Player API",
+    "version" : "v1.0.0"
+  },
+  "tags" : [ {
+    "name" : "Counts",
+    "description" : "Network-wide player counts by backend server and by proxy."
+  }, {
+    "name" : "Locale",
+    "description" : "Per-player interface language."
+  }, {
+    "name" : "Names",
+    "description" : "The durable id-to-name index and tab-complete."
+  }, {
+    "name" : "Sessions",
+    "description" : "Live presence: login, logout, heartbeats, and session lookup."
+  } ],
+  "paths" : {
+    "/v1/players/counts/proxies" : {
+      "get" : {
+        "summary" : "Players per proxy and region",
+        "description" : "How the network is spread across proxies and where those proxies are — what `/online` asks. A separate call from the server counts rather than another field on their response: the two group the same players along different axes, and no caller wants both.",
+        "tags" : [ "Counts" ],
+        "responses" : {
+          "200" : {
+            "description" : "One entry per occupied proxy, plus the network total.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProxyCounts"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          },
+          "503" : {
+            "description" : "The session store could not be read.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/players/counts/servers" : {
+      "get" : {
+        "summary" : "Players per backend server",
+        "description" : "Which backend servers are busy — what a server selector or `/agones` asks.",
+        "tags" : [ "Counts" ],
+        "responses" : {
+          "200" : {
+            "description" : "One entry per occupied server, plus the network total.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ServerCounts"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          },
+          "503" : {
+            "description" : "The session store could not be read. Deliberately not an empty answer: zero reads as \"nobody is online anywhere\", which callers will render.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/players/names" : {
+      "get" : {
+        "summary" : "Look up names for player ids",
+        "description" : "Batched on purpose: a leaderboard page needs ten names at once, and ten round trips to render one screen is not a thing worth building. Players need not be online.",
+        "tags" : [ "Names" ],
+        "parameters" : [ {
+          "description" : "Repeat once per player. Ids beyond the server's cap of 100 are ignored, as are malformed ones.",
+          "in" : "query",
+          "name" : "playerId",
+          "schema" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The names that are known. Ids this service has never seen are absent from the map rather than mapped to a placeholder — including when none are known, which is an empty map and not a 404.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NameLookupResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/players/names/suggestions" : {
+      "get" : {
+        "summary" : "Prefix-search online player names",
+        "description" : "Tab-complete. Deliberately not \"list everyone online\": clients call this per keystroke, and at 10k players a full roster would be a large response sent thousands of times a second. Only players with a live session are suggested, and a blank prefix returns nothing rather than everything.",
+        "tags" : [ "Names" ],
+        "parameters" : [ {
+          "description" : "How many to return. Clamped to the server's maximum; absent uses it.",
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "required" : true
+        }, {
+          "description" : "What the player has typed so far. Blank or absent returns nothing.",
+          "in" : "query",
+          "name" : "prefix",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Matching names, capped by the server.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NameSuggestionsResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/players/sessions" : {
+      "get" : {
+        "summary" : "Find a session by player name",
+        "description" : "The lookup behind `/msg <name>` and `/party invite <name>` when the target is on another proxy. Matched case-insensitively: Minecraft names are unique, their casing is not.",
+        "tags" : [ "Sessions" ],
+        "parameters" : [ {
+          "description" : "The player name to resolve.",
+          "in" : "query",
+          "name" : "name",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The live session for that name.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlayerSession"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "`name` is missing or blank.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Nobody is online under that name.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "post" : {
+        "summary" : "Claim a player's session",
+        "description" : "Called by a proxy as the player joins. A second login for a player who already holds a session is refused with 409 — unless the caller names a different proxy, which is what a proxy-to-proxy transfer looks like from here and takes the session over, or unless the existing session has gone quiet for longer than its TTL.",
+        "tags" : [ "Sessions" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "The session is now this proxy's. `Location` points at it."
+          },
+          "400" : {
+            "description" : "`playerId` is missing or not a UUID.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The player already holds a live session elsewhere. Not an error condition — it is the answer to \"may this player join\", and the proxy disconnects them with an already-online message.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          },
+          "503" : {
+            "description" : "The session store could not be written.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/players/sessions/heartbeats" : {
+      "post" : {
+        "summary" : "Keep a batch of sessions alive",
+        "description" : "One call per proxy per interval, naming every player it still holds. A session that stops being named expires on its own — which is how a proxy that dies without logging anyone out stops holding the network's players hostage.",
+        "tags" : [ "Sessions" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/HeartbeatRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "The batch was applied.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HeartbeatResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "The batch was empty, or an id was not a UUID. All-or-nothing on parsing: a partial success would hide the caller's bug.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          },
+          "503" : {
+            "description" : "The session store could not be written; nothing was touched.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/players/{playerId}/locale" : {
+      "put" : {
+        "summary" : "Store or clear a player's language preference",
+        "description" : "Written by the in-game `/lang` command. A null or blank `locale` clears the preference. The value is stored verbatim — the caller validates it against the languages it actually ships.",
+        "tags" : [ "Locale" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SetLocaleRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "The preference was stored or cleared."
+          },
+          "400" : {
+            "description" : "`playerId` is not a UUID.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "This service has never seen the player. The preference lives on the durable player row, which is written at login, so there is nothing to write against.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "get" : {
+        "summary" : "Read a player's language preference",
+        "description" : "Read on join to seed the proxy's cache. A player who has never chosen one reads as null, and the caller falls back to the locale the client announces — that is a normal answer, not a missing resource.",
+        "tags" : [ "Locale" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The stored tag, or null when the player has never chosen one.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlayerLocale"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "`playerId` is not a UUID.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/players/{playerId}/session" : {
+      "get" : {
+        "summary" : "Read a player's session",
+        "description" : "Who and where a player is. A proxy asks this for someone who is not connected to it — it has no other way to know they exist.",
+        "tags" : [ "Sessions" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The live session.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlayerSession"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "`playerId` is not a UUID.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "The player is not online.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "delete" : {
+        "summary" : "Release a player's session",
+        "description" : "Called by a proxy as the player leaves. Pass `proxyId`: the delete is then conditional on that proxy still owning the session, so a logout that races a transfer cannot delete the session the next proxy just created.",
+        "tags" : [ "Sessions" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "The proxy releasing the session. Omitting it deletes unconditionally, which is what an older plugin does.",
+          "in" : "query",
+          "name" : "proxyId",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "The session is gone."
+          },
+          "400" : {
+            "description" : "`playerId` is not a UUID.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No session to release — already logged out, expired, or now owned by a different proxy. Nothing for the caller to do about any of them.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          },
+          "503" : {
+            "description" : "The session store could not be written.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/players/{playerId}/session/server" : {
+      "put" : {
+        "summary" : "Record the backend server a player moved to",
+        "description" : "Follows a player across backend servers, so a session says where they actually are — a party warp needs the target's server, and only the proxy holding them knows when it changes.",
+        "tags" : [ "Sessions" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateServerRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "The session now points at that server."
+          },
+          "400" : {
+            "description" : "`playerId` is not a UUID, or `serverName` is missing.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "The player holds no session.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    }
+  },
+  "servers" : [ {
+    "url" : "http://localhost:9000",
+    "description" : "Auto generated value"
+  }, {
+    "url" : "http://0.0.0.0:9000",
+    "description" : "Auto generated value"
+  } ]
+}

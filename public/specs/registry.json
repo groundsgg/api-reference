@@ -2,10 +2,24 @@
   "schemaVersion": 1,
   "sources": [
     {
+      "id": "service-leaderboard",
+      "title": "Leaderboard API",
+      "slug": "leaderboard",
+      "path": "service-leaderboard/openapi.json",
+      "default": false
+    },
+    {
       "id": "service-maps",
       "title": "Maps API",
       "slug": "maps",
       "path": "service-maps/openapi.json",
+      "default": false
+    },
+    {
+      "id": "service-match",
+      "title": "Match API",
+      "slug": "match",
+      "path": "service-match/openapi.json",
       "default": false
     },
     {
@@ -21,6 +35,20 @@
       "slug": "permissions",
       "path": "service-permissions/openapi.json",
       "default": true
+    },
+    {
+      "id": "service-player",
+      "title": "Player API",
+      "slug": "player",
+      "path": "service-player/openapi.json",
+      "default": false
+    },
+    {
+      "id": "service-social",
+      "title": "Social API",
+      "slug": "social",
+      "path": "service-social/openapi.json",
+      "default": false
     }
   ]
 }
