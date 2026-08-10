@@ -1,0 +1,585 @@
+{
+  "openapi" : "3.1.0",
+  "components" : {
+    "schemas" : {
+      "AdjustmentRequest" : {
+        "description" : "Credit or debit a player by hand.",
+        "type" : "object",
+        "required" : [ "amount", "reason" ],
+        "properties" : {
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Signed, never zero. Positive credits, negative debits.",
+            "examples" : [ 250 ]
+          },
+          "reason" : {
+            "type" : "string",
+            "description" : "Why. Stored in the journal: an unexplained balance change is indistinguishable from an incident.",
+            "examples" : [ "compensation for ticket #4711" ]
+          }
+        }
+      },
+      "AdjustmentResponse" : {
+        "description" : "Result of an adjustment.",
+        "type" : "object",
+        "required" : [ "balance", "deduplicated" ],
+        "properties" : {
+          "balance" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "credited" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "What actually moved."
+          },
+          "deduplicated" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "BalanceResponse" : {
+        "description" : "A player's Coin balance.",
+        "type" : "object",
+        "properties" : {
+          "balance" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Spendable Coins.",
+            "examples" : [ 1240 ]
+          },
+          "lifetimeEarned" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Everything this player has ever earned, ignoring what they spent.",
+            "examples" : [ 4310 ]
+          }
+        }
+      },
+      "CatalogEntryResponse" : {
+        "description" : "One purchasable entry.",
+        "type" : "object",
+        "properties" : {
+          "sku" : {
+            "type" : "string",
+            "description" : "Stable identifier.",
+            "examples" : [ "cosmetic.trail.ember" ]
+          },
+          "category" : {
+            "type" : "string",
+            "description" : "Category from a fixed server-side allowlist. New categories arrive by migration, never by an API call — that allowlist is how 'Coins only buy cosmetics' is enforced rather than merely stated.",
+            "examples" : [ "cosmetic.trail" ]
+          },
+          "price" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "available" : {
+            "type" : "boolean",
+            "description" : "Whether the entry is currently on offer."
+          },
+          "owned" : {
+            "type" : "boolean",
+            "description" : "Whether the requesting player already owns it."
+          },
+          "minLevel" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "description" : "Unlock condition, if any."
+          },
+          "metadata" : {
+            "type" : "string",
+            "description" : "Presentation data: display-name key, icon, sort order."
+          }
+        },
+        "required" : [ "price" ]
+      },
+      "CatalogResponse" : {
+        "description" : "The catalogue as one player sees it.",
+        "type" : "object",
+        "required" : [ "entries" ],
+        "properties" : {
+          "entries" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CatalogEntryResponse"
+            }
+          },
+          "balance" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The requesting player's balance, so a shop can mark entries affordable without a second call."
+          }
+        }
+      },
+      "EntitlementResponse" : {
+        "description" : "Something a player owns.",
+        "type" : "object",
+        "required" : [ "sku", "category", "grantedAt" ],
+        "properties" : {
+          "sku" : {
+            "type" : "string"
+          },
+          "category" : {
+            "type" : "string"
+          },
+          "grantedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "grantedBy" : {
+            "type" : "string",
+            "description" : "How it was acquired.",
+            "examples" : [ "purchase", "admin" ]
+          }
+        }
+      },
+      "HistoryResponse" : {
+        "description" : "A page of the journal, newest first.",
+        "type" : "object",
+        "required" : [ "entries" ],
+        "properties" : {
+          "entries" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LedgerEntryResponse"
+            }
+          },
+          "nextBefore" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "Pass as `before` to fetch the next page. Null when the journal is exhausted."
+          }
+        }
+      },
+      "Instant" : {
+        "type" : "string",
+        "format" : "date-time",
+        "examples" : [ "2022-03-10T16:15:50Z" ]
+      },
+      "LedgerEntryResponse" : {
+        "type" : "object",
+        "description" : "One movement in the player's journal.",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Journal id, also the paging cursor."
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Signed: positive credits, negative debits. Never zero."
+          },
+          "balanceAfter" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Balance immediately after this movement."
+          },
+          "reason" : {
+            "type" : "string",
+            "description" : "Machine-readable cause.",
+            "examples" : [ "match.win", "shop.purchase", "admin.grant" ]
+          },
+          "reference" : {
+            "type" : [ "string", "null" ],
+            "description" : "What the movement points at: a match id with the earn-rule version, a SKU, or an admin justification.",
+            "examples" : [ "3f1c…#rules:1" ]
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        },
+        "required" : [ "createdAt" ]
+      },
+      "ProblemDetails" : {
+        "description" : "RFC 9457 problem details.",
+        "type" : "object",
+        "required" : [ "title", "status", "detail" ],
+        "properties" : {
+          "title" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "detail" : {
+            "type" : [ "string", "null" ]
+          },
+          "code" : {
+            "type" : "string",
+            "description" : "Stable machine-readable code.",
+            "examples" : [ "insufficient_funds", "already_owned", "unknown_sku" ]
+          }
+        }
+      },
+      "PurchaseRequest" : {
+        "description" : "Buy one catalogue entry.",
+        "type" : "object",
+        "required" : [ "sku" ],
+        "properties" : {
+          "sku" : {
+            "type" : "string",
+            "examples" : [ "cosmetic.trail.ember" ]
+          }
+        }
+      },
+      "PurchaseResponse" : {
+        "description" : "Result of a purchase.",
+        "type" : "object",
+        "properties" : {
+          "balance" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Balance after the debit."
+          },
+          "pricePaid" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "What the player paid, at the price read inside the transaction — never the price the client believed."
+          },
+          "deduplicated" : {
+            "type" : "boolean",
+            "description" : "True when the Idempotency-Key matched an earlier request and nothing changed."
+          }
+        }
+      },
+      "UUID" : {
+        "type" : "string",
+        "format" : "uuid",
+        "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+      }
+    },
+    "securitySchemes" : {
+      "bearerAuth" : {
+        "type" : "http",
+        "description" : "Service JWT with the grounds-services audience.",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
+      }
+    }
+  },
+  "info" : {
+    "description" : "Internal REST API for the network currency: wallet balances, the ledger, the cosmetics catalogue, and purchases. Coins are earned in game and cannot be bought, transferred between players, or converted to anything with real-world value — there is deliberately no endpoint for any of that.",
+    "title" : "Coins API",
+    "version" : "0.4.0"
+  },
+  "tags" : [ {
+    "name" : "Catalogue",
+    "description" : "Purchasable entries and their prices."
+  }, {
+    "name" : "Wallet",
+    "description" : "Balances, the ledger, purchases and administrative movements."
+  } ],
+  "paths" : {
+    "/v1/coins/catalog" : {
+      "get" : {
+        "summary" : "List the catalogue for a player",
+        "description" : "Every entry belongs to a category from a fixed allowlist, and that allowlist only changes by migration. It is what keeps Coins spendable on cosmetics and nothing that would affect a match.",
+        "tags" : [ "Catalogue" ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "category",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "description" : "Include withdrawn entries. Admin tooling only; a shop passes false.",
+          "in" : "query",
+          "name" : "includeUnavailable",
+          "schema" : {
+            "type" : [ "boolean", "null" ]
+          },
+          "required" : true
+        }, {
+          "description" : "Whose ownership flags and balance to resolve.",
+          "in" : "query",
+          "name" : "playerId",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The catalogue, with ownership resolved for the given player.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CatalogResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing or malformed playerId."
+          },
+          "401" : {
+            "description" : "Authentication is missing."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/coins/players/{playerId}/adjustments" : {
+      "post" : {
+        "summary" : "Credit or debit a player by hand",
+        "description" : "Administrator-only. Journalled with the calling subject as the actor, so no balance changes without an attributable row. Not subject to the daily earn cap: silently truncating a support correction is the one thing that must not happen quietly.",
+        "tags" : [ "Wallet" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AdjustmentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Applied, or replayed.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdjustmentResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Zero amount, or a missing field."
+          },
+          "401" : {
+            "description" : "Authentication is missing."
+          },
+          "403" : {
+            "description" : "The caller is not an administrator."
+          },
+          "422" : {
+            "description" : "A debit larger than the balance."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/coins/players/{playerId}/balance" : {
+      "get" : {
+        "summary" : "Read a player's balance",
+        "description" : "Always served from the primary database. A balance is not the kind of value that is merely old when stale, so callers should ask on join, after their own writes, and on a coins.balance.changed event — not on a timer.",
+        "tags" : [ "Wallet" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The balance. A player who has never earned anything reads as zero.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BalanceResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/coins/players/{playerId}/entitlements" : {
+      "get" : {
+        "summary" : "List what a player owns",
+        "description" : "Read by the cosmetics plugin when the player joins.",
+        "tags" : [ "Wallet" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "in" : "query",
+          "name" : "category",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Everything owned, newest grant first.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/EntitlementResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/coins/players/{playerId}/ledger" : {
+      "get" : {
+        "summary" : "Page a player's journal",
+        "description" : "Newest first. Answers 'why do I have 40 fewer Coins than yesterday' without log archaeology: every movement carries its cause and what it points at.",
+        "tags" : [ "Wallet" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "description" : "Return movements older than this journal id.",
+          "in" : "query",
+          "name" : "before",
+          "schema" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "required" : true
+        }, {
+          "description" : "Page size. Clamped to the server's cap.",
+          "in" : "query",
+          "name" : "limit",
+          "schema" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "One page of the journal.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HistoryResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/coins/players/{playerId}/purchases" : {
+      "post" : {
+        "summary" : "Buy a catalogue entry",
+        "description" : "Debits the price and grants the entitlement in one database transaction: either the player has the item and the Coins are gone, or neither happened. The price charged is read inside that transaction and is never the price the client sent.",
+        "tags" : [ "Wallet" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "description" : "Required, not optional: a retry on a purchase without one is a second purchase.",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PurchaseRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Bought, or replayed. `deduplicated` is true when the Idempotency-Key matched an earlier request and nothing changed.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PurchaseResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing Idempotency-Key or SKU."
+          },
+          "401" : {
+            "description" : "Authentication is missing."
+          },
+          "404" : {
+            "description" : "Unknown or withdrawn SKU."
+          },
+          "409" : {
+            "description" : "The player already owns it."
+          },
+          "422" : {
+            "description" : "The balance does not cover the price."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    }
+  },
+  "servers" : [ {
+    "url" : "http://localhost:8080",
+    "description" : "Auto generated value"
+  }, {
+    "url" : "http://0.0.0.0:8080",
+    "description" : "Auto generated value"
+  } ]
+}

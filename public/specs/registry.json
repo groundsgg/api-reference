@@ -2,6 +2,13 @@
   "schemaVersion": 1,
   "sources": [
     {
+      "id": "service-coins",
+      "title": "Coins API",
+      "slug": "coins",
+      "path": "service-coins/openapi.json",
+      "default": false
+    },
+    {
       "id": "service-maps",
       "title": "Maps API",
       "slug": "maps",
