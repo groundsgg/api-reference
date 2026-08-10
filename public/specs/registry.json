@@ -35,6 +35,13 @@
       "slug": "player",
       "path": "service-player/openapi.json",
       "default": false
+    },
+    {
+      "id": "service-social",
+      "title": "Social API",
+      "slug": "social",
+      "path": "service-social/openapi.json",
+      "default": false
     }
   ]
 }
