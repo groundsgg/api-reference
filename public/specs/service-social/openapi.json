@@ -1,0 +1,1120 @@
+{
+  "openapi" : "3.1.0",
+  "components" : {
+    "schemas" : {
+      "BlockList" : {
+        "description" : "Everyone a player has blocked.",
+        "type" : "object",
+        "required" : [ "blockedIds" ],
+        "properties" : {
+          "blockedIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "BlockStatus" : {
+        "description" : "Whether one player has blocked another.",
+        "type" : "object",
+        "properties" : {
+          "blocked" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "Friend" : {
+        "description" : "One entry of a friends list.",
+        "type" : "object",
+        "required" : [ "playerId", "friendsSince" ],
+        "properties" : {
+          "playerId" : {
+            "type" : "string",
+            "description" : "The friend's UUID."
+          },
+          "name" : {
+            "type" : [ "string", "null" ],
+            "description" : "Their last known Minecraft name, or null if this service has never seen them log in. Callers fall back to the UUID rather than rendering a blank."
+          },
+          "friendsSince" : {
+            "type" : "string",
+            "description" : "When the friendship was made, ISO-8601."
+          }
+        }
+      },
+      "FriendRequestSettings" : {
+        "description" : "Whether this player accepts requests.",
+        "type" : "object",
+        "required" : [ "enabled" ],
+        "properties" : {
+          "enabled" : {
+            "type" : [ "boolean", "null" ],
+            "description" : "False silently refuses every incoming request."
+          }
+        }
+      },
+      "FriendsList" : {
+        "description" : "A player's friends.",
+        "type" : "object",
+        "required" : [ "friends" ],
+        "properties" : {
+          "friends" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Friend"
+            }
+          }
+        }
+      },
+      "Friendship" : {
+        "description" : "Whether two players are friends.",
+        "type" : "object",
+        "properties" : {
+          "areFriends" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "ImportMinecraftFriendsBody" : {
+        "description" : "A player's Mojang friends.",
+        "type" : "object",
+        "properties" : {
+          "friends" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "$ref" : "#/components/schemas/MinecraftFriend"
+            }
+          }
+        }
+      },
+      "ImportMinecraftFriendsResult" : {
+        "description" : "How the import went.",
+        "type" : "object",
+        "properties" : {
+          "imported" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Friendships created."
+          },
+          "skipped" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Pairs left alone — blocked, already friends, over the limit, or not a valid UUID."
+          }
+        }
+      },
+      "MinecraftFriend" : {
+        "type" : "object",
+        "description" : "One Mojang friend to import.",
+        "properties" : {
+          "playerId" : {
+            "type" : [ "string", "null" ],
+            "description" : "Their UUID."
+          },
+          "name" : {
+            "type" : [ "string", "null" ],
+            "description" : "Their name, recorded even when the pair is skipped."
+          }
+        }
+      },
+      "Party" : {
+        "description" : "A party and who is in it.",
+        "type" : "object",
+        "required" : [ "partyId", "leaderId", "members", "pendingInvites", "createdAt" ],
+        "properties" : {
+          "partyId" : {
+            "type" : "string",
+            "description" : "The party's id."
+          },
+          "leaderId" : {
+            "type" : "string",
+            "description" : "The leader — the only member who may invite, kick or disband."
+          },
+          "members" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            },
+            "description" : "Everyone in the party, the leader included."
+          },
+          "pendingInvites" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            },
+            "description" : "Players who have been invited and have not answered."
+          },
+          "createdAt" : {
+            "type" : "string",
+            "description" : "When the party was created, ISO-8601."
+          }
+        }
+      },
+      "PartyInviteBody" : {
+        "description" : "Who to invite.",
+        "type" : "object",
+        "required" : [ "inviteeId" ],
+        "properties" : {
+          "inviteeId" : {
+            "type" : [ "string", "null" ],
+            "description" : "The player being invited."
+          }
+        }
+      },
+      "PartyMemberBody" : {
+        "description" : "Which member the action applies to.",
+        "type" : "object",
+        "required" : [ "playerId" ],
+        "properties" : {
+          "playerId" : {
+            "type" : [ "string", "null" ],
+            "description" : "The member's UUID."
+          }
+        }
+      },
+      "PendingFriendRequest" : {
+        "description" : "A friend request that has not been answered.",
+        "type" : "object",
+        "required" : [ "playerId", "createdAt", "expiresAt" ],
+        "properties" : {
+          "playerId" : {
+            "type" : "string",
+            "description" : "The other player."
+          },
+          "createdAt" : {
+            "type" : "string",
+            "description" : "When it was sent, ISO-8601."
+          },
+          "expiresAt" : {
+            "type" : "string",
+            "description" : "When it lapses, ISO-8601."
+          }
+        }
+      },
+      "PendingFriendRequests" : {
+        "description" : "Requests waiting on either side.",
+        "type" : "object",
+        "required" : [ "incoming", "outgoing" ],
+        "properties" : {
+          "incoming" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PendingFriendRequest"
+            },
+            "description" : "Requests this player has been sent."
+          },
+          "outgoing" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PendingFriendRequest"
+            },
+            "description" : "Requests this player has sent."
+          }
+        }
+      },
+      "PendingPartyInvite" : {
+        "description" : "A party invite waiting on a player.",
+        "type" : "object",
+        "required" : [ "partyId", "inviterId" ],
+        "properties" : {
+          "partyId" : {
+            "type" : "string",
+            "description" : "The party they were invited to."
+          },
+          "inviterId" : {
+            "type" : "string",
+            "description" : "Who invited them."
+          }
+        }
+      },
+      "PendingPartyInvites" : {
+        "description" : "Every open invite for one player.",
+        "type" : "object",
+        "required" : [ "invites" ],
+        "properties" : {
+          "invites" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PendingPartyInvite"
+            }
+          }
+        }
+      },
+      "PlayerName" : {
+        "description" : "A player's current Minecraft name.",
+        "type" : "object",
+        "required" : [ "name" ],
+        "properties" : {
+          "name" : {
+            "type" : [ "string", "null" ],
+            "description" : "The name to record."
+          }
+        }
+      },
+      "Problem" : {
+        "description" : "A failed request, in RFC 9457 problem-details form.",
+        "type" : "object",
+        "required" : [ "title", "code" ],
+        "properties" : {
+          "title" : {
+            "type" : "string",
+            "description" : "Short, human-readable summary.",
+            "examples" : [ "Not ranked" ]
+          },
+          "status" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "HTTP status, repeated in the body.",
+            "examples" : [ 404 ]
+          },
+          "detail" : {
+            "type" : [ "string", "null" ],
+            "description" : "What went wrong with this specific request.",
+            "examples" : [ "The player has no entry on this board for season s0." ]
+          },
+          "code" : {
+            "type" : "string",
+            "description" : "Stable machine-readable code. Branch on this, not on the prose.",
+            "examples" : [ "not_ranked", "invalid_request", "unauthenticated", "forbidden" ]
+          }
+        }
+      },
+      "SendFriendRequestBody" : {
+        "description" : "Who to ask.",
+        "type" : "object",
+        "required" : [ "receiverId" ],
+        "properties" : {
+          "receiverId" : {
+            "type" : [ "string", "null" ],
+            "description" : "The player being asked."
+          }
+        }
+      },
+      "SendFriendRequestResult" : {
+        "description" : "What became of the request.",
+        "type" : "object",
+        "required" : [ "outcome" ],
+        "properties" : {
+          "outcome" : {
+            "type" : "string",
+            "description" : "SENT when a request is now pending, AUTO_ACCEPTED when the other player had already asked and the two are now friends, and one of the refusals otherwise.",
+            "enum" : [ "SENT", "AUTO_ACCEPTED", "SELF_REQUEST", "ALREADY_FRIENDS", "REQUESTS_DISABLED", "ALREADY_PENDING", "LIMIT_REACHED" ]
+          }
+        }
+      }
+    },
+    "securitySchemes" : {
+      "bearerAuth" : {
+        "type" : "http",
+        "description" : "The projected ServiceAccount token from /var/run/secrets/grounds/token, with the grounds-services audience.",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
+      }
+    }
+  },
+  "info" : {
+    "description" : "Friendships, parties and blocks — the three ways players are attached to each other across the network.\n\nA proxy only knows the players connected to itself, so anything that spans proxies has to ask here: whether two players are friends, which party someone is in, whether a message may be delivered at all.\n\nBlocks are one-directional and private. That shapes the rest of the API: a friend request refused because the receiver blocked the sender reports REQUESTS_DISABLED, and a party invite to someone who blocked the inviter is refused without saying why. Neither answer distinguishes a block from an ordinary refusal, on purpose.\n\nNames live here too, in an index that is never deleted — a friends list has to render a name for someone who is offline, which a session table cannot do.",
+    "title" : "Social API",
+    "version" : "v0.7.0"
+  },
+  "tags" : [ {
+    "name" : "Blocks",
+    "description" : "One-directional, private blocks between players."
+  }, {
+    "name" : "Friends",
+    "description" : "Friendships and the requests that make them."
+  }, {
+    "name" : "Parties",
+    "description" : "Groups of players who queue and play together."
+  } ],
+  "paths" : {
+    "/v1/social/parties/{partyId}" : {
+      "delete" : {
+        "summary" : "Disband a party",
+        "description" : "Leader only. `leaderId` identifies who is asking — the party id alone would let any member end everyone else's party.",
+        "tags" : [ "Parties" ],
+        "parameters" : [ {
+          "name" : "partyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "leaderId",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "The party is gone."
+          },
+          "409" : {
+            "description" : "The caller does not lead that party."
+          }
+        }
+      }
+    },
+    "/v1/social/player-names/{playerId}" : {
+      "put" : {
+        "summary" : "Record a player's current Minecraft name",
+        "tags" : [ "Friends" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlayerName"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "The name was recorded."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/blocks" : {
+      "get" : {
+        "summary" : "List everyone this player has blocked",
+        "tags" : [ "Blocks" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BlockList"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/blocks/{blockedId}" : {
+      "delete" : {
+        "summary" : "Unblock a player",
+        "tags" : [ "Blocks" ],
+        "parameters" : [ {
+          "name" : "blockedId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "The block is gone."
+          },
+          "404" : {
+            "description" : "There was no such block."
+          }
+        }
+      },
+      "get" : {
+        "summary" : "Ask whether one player has blocked another",
+        "description" : "Answers `false` rather than 404 — \"not blocked\" is an answer, not a gap.",
+        "tags" : [ "Blocks" ],
+        "parameters" : [ {
+          "name" : "blockedId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BlockStatus"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put" : {
+        "summary" : "Block a player",
+        "tags" : [ "Blocks" ],
+        "parameters" : [ {
+          "name" : "blockedId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "They are blocked."
+          },
+          "409" : {
+            "description" : "Blocking yourself, or the block already existed."
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/friend-requests" : {
+      "post" : {
+        "summary" : "Ask another player to be friends",
+        "description" : "Always 200: the outcome is the answer, and every one of them is something the caller renders to a player rather than an error to handle. A refusal because the receiver blocked the sender is reported as REQUESTS_DISABLED — telling the sender they are blocked would tell them something the blocker chose not to share.",
+        "tags" : [ "Friends" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SendFriendRequestBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SendFriendRequestResult"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        }
+      },
+      "get" : {
+        "summary" : "List a player's open friend requests, both directions",
+        "tags" : [ "Friends" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PendingFriendRequests"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/friend-requests/settings" : {
+      "put" : {
+        "summary" : "Turn friend requests on or off for this player",
+        "description" : "With requests off, an incoming one is refused without notifying anybody.",
+        "tags" : [ "Friends" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/FriendRequestSettings"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FriendRequestSettings"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/friend-requests/{senderId}" : {
+      "delete" : {
+        "summary" : "Deny a friend request",
+        "description" : "Deleting the request is denying it; the sender is not told.",
+        "tags" : [ "Friends" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "senderId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "The request is gone."
+          },
+          "404" : {
+            "description" : "No such request is pending."
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/friend-requests/{senderId}/acceptance" : {
+      "post" : {
+        "summary" : "Accept a friend request",
+        "tags" : [ "Friends" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "senderId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "They are now friends."
+          },
+          "404" : {
+            "description" : "No such request is pending."
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/friends" : {
+      "get" : {
+        "summary" : "List a player's friends",
+        "tags" : [ "Friends" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FriendsList"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/friends/imports" : {
+      "post" : {
+        "summary" : "Import a player's Minecraft friends",
+        "description" : "Creates friendships directly, without the request/accept handshake — a Mojang friendship is already mutual, so there is no consent left to ask for. Blocks, disabled requests and the friend limit are still checked per pair, so an import cannot walk around the guards the normal path enforces.",
+        "tags" : [ "Friends" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ImportMinecraftFriendsBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ImportMinecraftFriendsResult"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/friends/{friendId}" : {
+      "delete" : {
+        "summary" : "End a friendship",
+        "tags" : [ "Friends" ],
+        "parameters" : [ {
+          "name" : "friendId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "They are no longer friends."
+          },
+          "404" : {
+            "description" : "They were not friends to begin with."
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/friends/{otherId}" : {
+      "get" : {
+        "summary" : "Ask whether two players are friends",
+        "description" : "Answers `false` rather than 404 — \"not friends\" is an answer, not a gap.",
+        "tags" : [ "Friends" ],
+        "parameters" : [ {
+          "name" : "otherId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Friendship"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/party" : {
+      "delete" : {
+        "summary" : "Leave the party",
+        "description" : "Leaving as the last member deletes the party; leaving as the leader hands leadership to another active member first.",
+        "tags" : [ "Parties" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "The player has left."
+          },
+          "404" : {
+            "description" : "The player is not in a party."
+          }
+        }
+      },
+      "get" : {
+        "summary" : "Read the party a player is in",
+        "tags" : [ "Parties" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The party.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Party"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "The player is not in a party."
+          }
+        }
+      },
+      "post" : {
+        "summary" : "Create a party with this player as leader",
+        "tags" : [ "Parties" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "201" : {
+            "description" : "The new party."
+          },
+          "409" : {
+            "description" : "The player is already in a party."
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/party-invites" : {
+      "get" : {
+        "summary" : "List the party invites waiting on a player",
+        "tags" : [ "Parties" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PendingPartyInvites"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/party-invites/{partyId}" : {
+      "delete" : {
+        "summary" : "Deny a party invite",
+        "tags" : [ "Parties" ],
+        "parameters" : [ {
+          "name" : "partyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "The invite is gone."
+          },
+          "404" : {
+            "description" : "They were not invited to that party."
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/party-invites/{partyId}/acceptance" : {
+      "post" : {
+        "summary" : "Accept a party invite",
+        "description" : "A player already in another party leaves it first.",
+        "tags" : [ "Parties" ],
+        "parameters" : [ {
+          "name" : "partyId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The party they joined.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Party"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "They were not invited to that party."
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/party/invites" : {
+      "post" : {
+        "summary" : "Invite a player",
+        "description" : "An inviter who is not in a party gets one created first, which is what makes `/party invite <name>` work as a player expects. An invite the invitee has blocked never goes out.",
+        "tags" : [ "Parties" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PartyInviteBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "The party the invite was sent for.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Party"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Not the leader, the party is full, they are already in it, or blocked."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/party/leader" : {
+      "put" : {
+        "summary" : "Hand leadership to another member",
+        "tags" : [ "Parties" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PartyMemberBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "The party, with its new leader.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Party"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Not the leader, or the target is not a member."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/party/members/{memberId}" : {
+      "delete" : {
+        "summary" : "Kick a member",
+        "description" : "Leader only, and a leader cannot kick themselves — that is leaving.",
+        "tags" : [ "Parties" ],
+        "parameters" : [ {
+          "name" : "memberId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "The member is out."
+          },
+          "409" : {
+            "description" : "Not the leader, or not a member."
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/party/presence" : {
+      "put" : {
+        "summary" : "Report that a member dropped or came back",
+        "description" : "A disconnect starts the grace period rather than removing the player, and hands leadership on immediately if they were the leader — a party should not be leaderless while someone reconnects.",
+        "tags" : [ "Parties" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "connected",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "boolean", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The party the player is in.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Party"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "The player is not in a party."
+          }
+        }
+      }
+    }
+  },
+  "servers" : [ {
+    "url" : "http://localhost:9000",
+    "description" : "Auto generated value"
+  }, {
+    "url" : "http://0.0.0.0:9000",
+    "description" : "Auto generated value"
+  } ]
+}
