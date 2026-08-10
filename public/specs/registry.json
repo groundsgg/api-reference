@@ -16,6 +16,13 @@
       "default": false
     },
     {
+      "id": "service-match",
+      "title": "Match API",
+      "slug": "match",
+      "path": "service-match/openapi.json",
+      "default": false
+    },
+    {
       "id": "service-moderation",
       "title": "Moderation API",
       "slug": "moderation",
