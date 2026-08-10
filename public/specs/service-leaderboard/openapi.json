@@ -1,0 +1,383 @@
+{
+  "openapi" : "3.1.0",
+  "components" : {
+    "schemas" : {
+      "LeaderboardEntry" : {
+        "description" : "One row of a board.",
+        "type" : "object",
+        "properties" : {
+          "rank" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "1-indexed rank within the board."
+          },
+          "playerId" : {
+            "type" : "string",
+            "description" : "Player UUID."
+          },
+          "score" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The player's score."
+          },
+          "lastUpdated" : {
+            "type" : "string",
+            "description" : "When this player last changed their score, as an ISO-8601 instant.",
+            "examples" : [ "2026-08-07T09:41:12Z" ]
+          }
+        },
+        "required" : [ "playerId", "lastUpdated" ]
+      },
+      "PlayerRankResponse" : {
+        "description" : "One player's standing on a board.",
+        "type" : "object",
+        "properties" : {
+          "rank" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "1-indexed rank."
+          },
+          "score" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The player's score."
+          },
+          "seasonId" : {
+            "type" : "string",
+            "description" : "The season this standing belongs to."
+          }
+        },
+        "required" : [ "seasonId" ]
+      },
+      "Problem" : {
+        "description" : "A failed request, in RFC 9457 problem-details form.",
+        "type" : "object",
+        "required" : [ "title", "code" ],
+        "properties" : {
+          "title" : {
+            "type" : "string",
+            "description" : "Short, human-readable summary.",
+            "examples" : [ "Not ranked" ]
+          },
+          "status" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "HTTP status, repeated in the body.",
+            "examples" : [ 404 ]
+          },
+          "detail" : {
+            "type" : [ "string", "null" ],
+            "description" : "What went wrong with this specific request.",
+            "examples" : [ "The player has no entry on this board for season s0." ]
+          },
+          "code" : {
+            "type" : "string",
+            "description" : "Stable machine-readable code. Branch on this, not on the prose.",
+            "examples" : [ "not_ranked", "invalid_request", "unauthenticated", "forbidden" ]
+          }
+        }
+      },
+      "SeasonResetRequest" : {
+        "description" : "Which season closes, and what opens after it.",
+        "type" : "object",
+        "required" : [ "seasonId", "newSeasonId" ],
+        "properties" : {
+          "seasonId" : {
+            "type" : [ "string", "null" ],
+            "description" : "The season being closed. Naming it rather than saying \"the current one\" is what makes a retry safe: a second call for a season that already closed is a no-op rather than a second rollover.",
+            "examples" : [ "s0" ]
+          },
+          "newSeasonId" : {
+            "type" : [ "string", "null" ],
+            "description" : "The season to open.",
+            "examples" : [ "s1" ]
+          }
+        }
+      },
+      "SeasonResetResponse" : {
+        "description" : "What the reset did.",
+        "type" : "object",
+        "properties" : {
+          "closed" : {
+            "type" : "boolean",
+            "description" : "True when this call closed the season. False when it had already closed."
+          },
+          "archivedEntries" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "How many entries were archived out of the live board."
+          }
+        }
+      },
+      "SubmitScoreRequest" : {
+        "description" : "One player's score on a board.",
+        "type" : "object",
+        "required" : [ "playerId", "score", "mode" ],
+        "properties" : {
+          "playerId" : {
+            "type" : [ "string", "null" ],
+            "description" : "Player UUID, Mojang format with dashes.",
+            "examples" : [ "6f1d2b3c-0000-4000-8000-000000000001" ]
+          },
+          "score" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "The value to submit. How it combines with the stored score is `mode`.",
+            "examples" : [ 1400 ]
+          },
+          "mode" : {
+            "type" : [ "string", "null" ],
+            "description" : "REPLACE overwrites, ACCUMULATE adds, MAX keeps the higher of the two. Required — there is no safe default, since each mode is the wrong answer for the other two kinds of board.",
+            "enum" : [ "REPLACE", "ACCUMULATE", "MAX" ]
+          },
+          "seasonId" : {
+            "type" : [ "string", "null" ],
+            "description" : "Pin to a season. Omitted means the board's active season.",
+            "examples" : [ "s0" ]
+          },
+          "idempotencyKey" : {
+            "type" : [ "string", "null" ],
+            "description" : "Deduplication token. The same key within the service's idempotency window returns the earlier outcome instead of submitting again, so a retry cannot double-count.",
+            "examples" : [ "<matchId>:<playerId>" ]
+          }
+        }
+      },
+      "SubmitScoreResponse" : {
+        "description" : "The board after the submission.",
+        "type" : "object",
+        "properties" : {
+          "effectiveScore" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The player's score once the mode was applied."
+          },
+          "rank" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "1-indexed rank after the update. 0 when not on the board."
+          },
+          "seasonId" : {
+            "type" : "string",
+            "description" : "The season the submission was attributed to."
+          },
+          "deduplicated" : {
+            "type" : "boolean",
+            "description" : "True when the idempotency key matched an earlier submit and nothing changed."
+          }
+        },
+        "required" : [ "seasonId" ]
+      },
+      "TopResponse" : {
+        "description" : "The top of a board for one season.",
+        "type" : "object",
+        "required" : [ "entries", "seasonId" ],
+        "properties" : {
+          "entries" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LeaderboardEntry"
+            },
+            "description" : "Entries, best first."
+          },
+          "seasonId" : {
+            "type" : "string",
+            "description" : "The season these entries belong to."
+          }
+        }
+      }
+    },
+    "securitySchemes" : {
+      "bearerAuth" : {
+        "type" : "http",
+        "description" : "The projected ServiceAccount token from /var/run/secrets/grounds/token, with the grounds-services audience.",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
+      }
+    }
+  },
+  "info" : {
+    "description" : "Persistent player rankings. A board is a (boardId, seasonId) pair: the board id is stable per gamemode (`bedwars.solos`), the season rolls over on ops's schedule and the scores from the closed season are archived rather than deleted.\n\nScores are submitted by whoever owns the result — service-match after a rated match, not the gamemode — and read by anything that renders a board. A submission says how it combines with what is stored: overwrite, add, or keep the better of the two.\n\nA retried submission is the hazard this API is shaped around: a double-counted score is visible to players and stays wrong for a season. Send an idempotency key and a retry costs nothing.",
+    "title" : "Leaderboard API",
+    "version" : "v1.3.0"
+  },
+  "tags" : [ {
+    "name" : "Leaderboards",
+    "description" : "Persistent player rankings per board and season."
+  } ],
+  "paths" : {
+    "/v1/leaderboards/{boardId}/players/{playerId}" : {
+      "get" : {
+        "summary" : "Read one player's standing",
+        "description" : "404 when the player has never scored on this board in this season.",
+        "tags" : [ "Leaderboards" ],
+        "parameters" : [ {
+          "name" : "boardId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "seasonId",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The player's rank and score.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlayerRankResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "The player has no entry on this board."
+          }
+        }
+      }
+    },
+    "/v1/leaderboards/{boardId}/scores" : {
+      "post" : {
+        "summary" : "Submit a score",
+        "description" : "Combines the submitted value with the player's stored score according to `mode`. Send an `idempotencyKey` if the caller can retry — the leaderboard is one of the few places where a retried write is visible to players forever.",
+        "tags" : [ "Leaderboards" ],
+        "parameters" : [ {
+          "name" : "boardId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SubmitScoreRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "The board after the submission.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SubmitScoreResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Malformed player id, mode or board."
+          }
+        }
+      }
+    },
+    "/v1/leaderboards/{boardId}/season-resets" : {
+      "post" : {
+        "summary" : "Roll the board to a new season",
+        "description" : "Archives the closing season's entries and opens a new one. Admin-only: the caller's ServiceAccount must be one of the admin accounts. Idempotent — closing a season that already closed reports `closed: false` and changes nothing.",
+        "tags" : [ "Leaderboards" ],
+        "parameters" : [ {
+          "name" : "boardId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SeasonResetRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "What the reset did.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SeasonResetResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "The caller is not an admin ServiceAccount."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        }
+      }
+    },
+    "/v1/leaderboards/{boardId}/top" : {
+      "get" : {
+        "summary" : "Read the top of a board",
+        "description" : "Entries best-first. `limit` is capped server-side, so a caller asking for everything gets the ceiling rather than an error.",
+        "tags" : [ "Leaderboards" ],
+        "parameters" : [ {
+          "name" : "boardId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 100
+          }
+        }, {
+          "name" : "seasonId",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The top entries for the season.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TopResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers" : [ {
+    "url" : "http://localhost:9000",
+    "description" : "Auto generated value"
+  }, {
+    "url" : "http://0.0.0.0:9000",
+    "description" : "Auto generated value"
+  } ]
+}
