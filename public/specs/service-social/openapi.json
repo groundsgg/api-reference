@@ -316,7 +316,7 @@
   "info" : {
     "description" : "Friendships, parties and blocks — the three ways players are attached to each other across the network.\n\nA proxy only knows the players connected to itself, so anything that spans proxies has to ask here: whether two players are friends, which party someone is in, whether a message may be delivered at all.\n\nBlocks are one-directional and private. That shapes the rest of the API: a friend request refused because the receiver blocked the sender reports REQUESTS_DISABLED, and a party invite to someone who blocked the inviter is refused without saying why. Neither answer distinguishes a block from an ordinary refusal, on purpose.\n\nNames live here too, in an index that is never deleted — a friends list has to render a name for someone who is offline, which a session table cannot do.",
     "title" : "Social API",
-    "version" : "v0.7.0"
+    "version" : "v1.0.0"
   },
   "tags" : [ {
     "name" : "Blocks",
