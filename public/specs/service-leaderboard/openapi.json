@@ -198,7 +198,7 @@
   "info" : {
     "description" : "Persistent player rankings. A board is a (boardId, seasonId) pair: the board id is stable per gamemode (`bedwars.solos`), the season rolls over on ops's schedule and the scores from the closed season are archived rather than deleted.\n\nScores are submitted by whoever owns the result — service-match after a rated match, not the gamemode — and read by anything that renders a board. A submission says how it combines with what is stored: overwrite, add, or keep the better of the two.\n\nA retried submission is the hazard this API is shaped around: a double-counted score is visible to players and stays wrong for a season. Send an idempotency key and a retry costs nothing.",
     "title" : "Leaderboard API",
-    "version" : "v1.3.0"
+    "version" : "v2.0.0"
   },
   "tags" : [ {
     "name" : "Leaderboards",
