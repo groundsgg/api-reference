@@ -262,6 +262,10 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "fleetName" : {
+            "type" : [ "string", "null" ],
+            "description" : "The Agones Fleet that serves this mode. Omit when the fleet is named after the mode, which is the usual case. Set it when one image serves several modes — a duel server builds a different arena per mode and runs all of them from one pool, and a fleet per mode would idle a set of servers for each."
           }
         }
       },
