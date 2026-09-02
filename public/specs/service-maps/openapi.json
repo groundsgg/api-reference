@@ -1,7 +1,7 @@
 {
   "openapi" : "3.1.0",
   "info" : {
-    "description" : "The registry for Minecraft maps: what exists, which versions were published, and which version each environment serves.\n\n**Bundles do not pass through this API.** An upload is a presigned URL the client PUTs to directly, and game servers read published content from the CDN — they never call this service.\n\n**Publishing is not going live.** A published version is merely pinnable; moving a pin is what changes the map every player loads, and it is granted separately.",
+    "description" : "The registry for Minecraft maps: what exists, which versions were published, and which version each environment serves.\n\n**Bundles do not pass through this API.** An upload is a presigned URL the client PUTs to directly, and game servers read published content from the CDN — they never call this service.\n\n**Publishing is not going live.** A published version is merely pinnable; moving a pin is what changes the map every player loads, and it is granted separately.\n\n**Uploaded maps may derive asynchronously.** When derivation is enabled, commit an uploaded source, poll its exact version until it reaches a terminal state, and retry only retryable SYSTEM failures through the derive retry endpoint.",
     "title" : "Maps API",
     "version" : "local-SNAPSHOT"
   },
@@ -10,7 +10,7 @@
     "description" : "The catalogue: creating, listing and forking maps."
   }, {
     "name" : "Versions",
-    "description" : "Uploading a world, committing a version and publishing it."
+    "description" : "Uploading a world, asynchronous derivation and exact-version polling. Legacy publish remains only for source-less compatibility versions."
   }, {
     "name" : "Pins",
     "description" : "Which version an environment serves. Going live and rolling back."
@@ -33,6 +33,9 @@
           },
           "sourceSha256" : {
             "type" : [ "string", "null" ]
+          },
+          "derive" : {
+            "type" : "boolean"
           },
           "parentVersion" : {
             "type" : [ "integer", "null" ],
@@ -503,6 +506,92 @@
           },
           "400" : {
             "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "keycloakBearer" : [ ]
+        } ]
+      }
+    },
+    "/v1/maps/{address}/versions/{version}" : {
+      "get" : {
+        "summary" : "Read an exact version",
+        "description" : "Returns the current asynchronous derive state for polling a committed version.",
+        "tags" : [ "Versions" ],
+        "parameters" : [ {
+          "name" : "address",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : ".+"
+          }
+        }, {
+          "name" : "version",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "security" : [ {
+          "keycloakBearer" : [ ]
+        } ]
+      }
+    },
+    "/v1/maps/{address}/versions/{version}/derive/retry" : {
+      "post" : {
+        "summary" : "Retry a failed derivation",
+        "description" : "Restarts only retryable SYSTEM failures. The returned DERIVING version can be polled with the exact-version endpoint.",
+        "tags" : [ "Versions" ],
+        "parameters" : [ {
+          "name" : "address",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : ".+"
+          }
+        }, {
+          "name" : "version",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
           }
         },
         "security" : [ {
