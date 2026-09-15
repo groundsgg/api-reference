@@ -123,6 +123,303 @@
         "type" : "string",
         "enum" : [ "OPEN", "COMPLETE", "INCOMPLETE" ]
       },
+      "CaseAssignmentFilter" : {
+        "type" : "string",
+        "enum" : [ "ANY", "ASSIGNED", "UNASSIGNED" ]
+      },
+      "CaseAuditResponse" : {
+        "type" : "object",
+        "required" : [ "eventId", "eventType", "actorType", "actorId", "details", "occurredAt" ],
+        "properties" : {
+          "eventId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "eventType" : {
+            "type" : "string"
+          },
+          "actorType" : {
+            "type" : "string"
+          },
+          "actorId" : {
+            "type" : [ "string", "null" ]
+          },
+          "details" : {
+            "$ref" : "#/components/schemas/JsonNode"
+          },
+          "occurredAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "CaseDecisionRequest" : {
+        "type" : "object",
+        "properties" : {
+          "playerOutcome" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/PlayerCaseOutcome"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "reasonCode" : {
+            "type" : "string"
+          },
+          "internalReason" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "reasonCode", "internalReason" ]
+      },
+      "CaseDetailResponse" : {
+        "description" : "Authorized Portal projection of one moderation case.",
+        "type" : "object",
+        "required" : [ "caseId", "status", "priority", "revision", "createdAt", "updatedAt", "resolvedAt", "assignedModeratorId", "assignedAt", "reports", "audit" ],
+        "properties" : {
+          "caseId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/CaseStatus"
+          },
+          "priority" : {
+            "$ref" : "#/components/schemas/CasePriority"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "resolvedAt" : {
+            "type" : [ "string", "null" ],
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "assignedModeratorId" : {
+            "type" : [ "string", "null" ]
+          },
+          "assignedAt" : {
+            "type" : [ "string", "null" ],
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "reports" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CaseReportResponse"
+            }
+          },
+          "audit" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "$ref" : "#/components/schemas/CaseAuditResponse"
+            }
+          }
+        }
+      },
+      "CaseEvidenceResponse" : {
+        "type" : "object",
+        "required" : [ "messageId", "sequence", "senderPlayerId", "content", "sentAt", "role", "channel", "visibility", "participantPlayerIds", "signatureStatus" ],
+        "properties" : {
+          "messageId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "sequence" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "senderPlayerId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "content" : {
+            "type" : "string"
+          },
+          "sentAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "role" : {
+            "$ref" : "#/components/schemas/EvidenceRole"
+          },
+          "channel" : {
+            "$ref" : "#/components/schemas/MessageChannel"
+          },
+          "visibility" : {
+            "$ref" : "#/components/schemas/MessageVisibility"
+          },
+          "participantPlayerIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid",
+              "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+            }
+          },
+          "signatureStatus" : {
+            "$ref" : "#/components/schemas/SignatureStatus"
+          }
+        }
+      },
+      "CaseListItemResponse" : {
+        "description" : "Stable, privacy-safe item in the moderation case queue.",
+        "type" : "object",
+        "required" : [ "caseId", "status", "priority", "revision", "createdAt", "updatedAt", "assignedModeratorId", "assignedAt", "targetPlayerId", "category", "source", "reportCount", "evidenceStatus" ],
+        "properties" : {
+          "caseId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/CaseStatus"
+          },
+          "priority" : {
+            "$ref" : "#/components/schemas/CasePriority"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "assignedModeratorId" : {
+            "type" : [ "string", "null" ]
+          },
+          "assignedAt" : {
+            "type" : [ "string", "null" ],
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "targetPlayerId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "category" : {
+            "$ref" : "#/components/schemas/ReportCategory"
+          },
+          "source" : {
+            "type" : [ "string", "null" ]
+          },
+          "reportCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "evidenceStatus" : {
+            "$ref" : "#/components/schemas/CaptureStatus"
+          }
+        }
+      },
+      "CasePriority" : {
+        "type" : "string",
+        "enum" : [ "LOW", "NORMAL", "HIGH", "CRITICAL" ]
+      },
+      "CaseQueryPageResponse" : {
+        "type" : "object",
+        "required" : [ "items", "nextCursor" ],
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CaseListItemResponse"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "CaseQueueTab" : {
+        "type" : "string",
+        "enum" : [ "OPEN", "MY", "COMPLETED" ]
+      },
+      "CaseReportResponse" : {
+        "type" : "object",
+        "required" : [ "reportId", "type", "reporterPlayerId", "targetPlayerId", "category", "source", "submittedAt", "evidenceCaptureId", "captureStatus", "incompleteReason", "evidence" ],
+        "properties" : {
+          "reportId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/ReportType"
+          },
+          "reporterPlayerId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "targetPlayerId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "category" : {
+            "$ref" : "#/components/schemas/ReportCategory"
+          },
+          "source" : {
+            "type" : [ "string", "null" ]
+          },
+          "submittedAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "evidenceCaptureId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "captureStatus" : {
+            "$ref" : "#/components/schemas/CaptureStatus"
+          },
+          "incompleteReason" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IncompleteReason"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "evidence" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CaseEvidenceResponse"
+            }
+          }
+        }
+      },
+      "CaseStatus" : {
+        "type" : "string",
+        "enum" : [ "OPEN", "IN_REVIEW", "ACTION_REQUIRED", "RESOLVED", "DISMISSED" ]
+      },
       "CompleteEvidenceCaptureRequest" : {
         "description" : "Requested terminal state for an open evidence capture.",
         "examples" : [ {
@@ -182,7 +479,7 @@
       "ConfirmManualFindingResponse" : {
         "description" : "Minimal result of a manual finding confirmation.",
         "type" : "object",
-        "required" : [ "findingId", "caseId", "source", "confirmedAt", "policyVersionId", "replay" ],
+        "required" : [ "findingId", "caseId", "source", "confirmedAt", "policyVersionId", "caseRevision", "replay" ],
         "properties" : {
           "findingId" : {
             "$ref" : "#/components/schemas/UUID"
@@ -204,6 +501,10 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "caseRevision" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
           },
           "replay" : {
             "type" : "boolean"
@@ -243,7 +544,7 @@
       "CorrectFindingResponse" : {
         "description" : "Minimal result of a finding correction.",
         "type" : "object",
-        "required" : [ "correctionId", "correctedFindingId", "replacementFindingId", "type", "correctedAt", "replay" ],
+        "required" : [ "correctionId", "correctedFindingId", "replacementFindingId", "type", "correctedAt", "caseRevision", "replay" ],
         "properties" : {
           "correctionId" : {
             "$ref" : "#/components/schemas/UUID"
@@ -265,6 +566,10 @@
             "type" : "string",
             "examples" : [ "2022-03-10T16:15:50Z" ],
             "$ref" : "#/components/schemas/Instant"
+          },
+          "caseRevision" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
           },
           "replay" : {
             "type" : "boolean"
@@ -661,6 +966,81 @@
           }
         }
       },
+      "JsonNode" : {
+        "type" : "object",
+        "properties" : {
+          "empty" : {
+            "type" : "boolean"
+          },
+          "valueNode" : {
+            "type" : "boolean"
+          },
+          "containerNode" : {
+            "type" : "boolean"
+          },
+          "missingNode" : {
+            "type" : "boolean"
+          },
+          "array" : {
+            "type" : "boolean"
+          },
+          "object" : {
+            "type" : "boolean"
+          },
+          "nodeType" : {
+            "$ref" : "#/components/schemas/JsonNodeType"
+          },
+          "pojo" : {
+            "type" : "boolean"
+          },
+          "number" : {
+            "type" : "boolean"
+          },
+          "integralNumber" : {
+            "type" : "boolean"
+          },
+          "floatingPointNumber" : {
+            "type" : "boolean"
+          },
+          "short" : {
+            "type" : "boolean"
+          },
+          "int" : {
+            "type" : "boolean"
+          },
+          "long" : {
+            "type" : "boolean"
+          },
+          "float" : {
+            "type" : "boolean"
+          },
+          "double" : {
+            "type" : "boolean"
+          },
+          "bigDecimal" : {
+            "type" : "boolean"
+          },
+          "bigInteger" : {
+            "type" : "boolean"
+          },
+          "textual" : {
+            "type" : "boolean"
+          },
+          "boolean" : {
+            "type" : "boolean"
+          },
+          "null" : {
+            "type" : "boolean"
+          },
+          "binary" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "JsonNodeType" : {
+        "type" : "string",
+        "enum" : [ "ARRAY", "BINARY", "BOOLEAN", "MISSING", "NULL", "NUMBER", "OBJECT", "POJO", "STRING" ]
+      },
       "MessageChannel" : {
         "type" : "string",
         "enum" : [ "GLOBAL", "SERVER", "GROUP", "PARTY", "PRIVATE" ]
@@ -672,6 +1052,10 @@
       "ModerationStatusReasonCode" : {
         "type" : "string",
         "enum" : [ "CHAT_BEHAVIOR", "SOCIAL_BEHAVIOR", "REPORT_SYSTEM_USE" ]
+      },
+      "PlayerCaseOutcome" : {
+        "type" : "string",
+        "enum" : [ "MEASURES_TAKEN", "NO_MEASURES_TAKEN" ]
       },
       "PlayerModerationStatusResponse" : {
         "description" : "Player-safe projection of the current global moderation status.",
@@ -756,6 +1140,47 @@
             "items" : {
               "$ref" : "#/components/schemas/EvidenceMessageRequest"
             }
+          }
+        }
+      },
+      "PlayerReportState" : {
+        "type" : "string",
+        "enum" : [ "RECEIVED", "UNDER_REVIEW", "COMPLETED_MEASURES", "COMPLETED_NO_MEASURES" ]
+      },
+      "PlayerReportStatusListResponse" : {
+        "type" : "object",
+        "required" : [ "items" ],
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PlayerReportStatusResponse"
+            }
+          }
+        }
+      },
+      "PlayerReportStatusResponse" : {
+        "type" : "object",
+        "required" : [ "publicReference", "state", "submittedAt", "updatedAt", "completedAt" ],
+        "properties" : {
+          "publicReference" : {
+            "type" : "string"
+          },
+          "state" : {
+            "$ref" : "#/components/schemas/PlayerReportState"
+          },
+          "submittedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "updatedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "completedAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
           }
         }
       },
@@ -930,6 +1355,18 @@
           }
         }
       },
+      "ReassignCaseRequest" : {
+        "type" : "object",
+        "required" : [ "moderatorId", "reason" ],
+        "properties" : {
+          "moderatorId" : {
+            "type" : [ "string", "null" ]
+          },
+          "reason" : {
+            "type" : "string"
+          }
+        }
+      },
       "ReplacePolicyDraftRequest" : {
         "description" : "Complete validated document replacing the current draft snapshot.",
         "type" : "object",
@@ -1000,6 +1437,10 @@
             "examples" : [ true ]
           }
         }
+      },
+      "ReportType" : {
+        "type" : "string",
+        "enum" : [ "PLAYER_REPORT", "SYSTEM_MESSAGE_REPORT" ]
       },
       "RiskDomain" : {
         "type" : "string",
@@ -1251,10 +1692,12 @@
   "info" : {
     "description" : "Internal REST API for moderation reports, evidence, and policy management.",
     "title" : "Moderation API",
-    "version" : "0.2.0"
+    "version" : "0.4.0"
   },
   "tags" : [ {
     "name" : "Automatic moderation findings"
+  }, {
+    "name" : "Moderation cases"
   }, {
     "name" : "Moderation evidence"
   }, {
@@ -1267,6 +1710,302 @@
     "name" : "Moderation status"
   } ],
   "paths" : {
+    "/v1/moderation/cases" : {
+      "get" : {
+        "tags" : [ "Moderation cases" ],
+        "parameters" : [ {
+          "name" : "assignment",
+          "in" : "query",
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/CaseAssignmentFilter"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "required" : true
+        }, {
+          "name" : "category",
+          "in" : "query",
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/ReportCategory"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "required" : true
+        }, {
+          "name" : "createdBefore",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "required" : true
+        }, {
+          "name" : "priority",
+          "in" : "query",
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/CasePriority"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "required" : true
+        }, {
+          "name" : "source",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "status",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "$ref" : "#/components/schemas/CaseStatus"
+            }
+          },
+          "required" : true
+        }, {
+          "name" : "tab",
+          "in" : "query",
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/CaseQueueTab"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "required" : true
+        }, {
+          "name" : "targetPlayerId",
+          "in" : "query",
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CaseQueryPageResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "List"
+      }
+    },
+    "/v1/moderation/cases/{caseId}" : {
+      "get" : {
+        "tags" : [ "Moderation cases" ],
+        "parameters" : [ {
+          "name" : "caseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CaseDetailResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Detail"
+      }
+    },
+    "/v1/moderation/cases/{caseId}/claim" : {
+      "post" : {
+        "tags" : [ "Moderation cases" ],
+        "parameters" : [ {
+          "name" : "caseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Claim"
+      }
+    },
+    "/v1/moderation/cases/{caseId}/dismiss" : {
+      "post" : {
+        "tags" : [ "Moderation cases" ],
+        "parameters" : [ {
+          "name" : "caseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CaseDecisionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Dismiss"
+      }
+    },
     "/v1/moderation/cases/{caseId}/findings" : {
       "post" : {
         "summary" : "Confirm a finding from a moderation case",
@@ -1290,6 +2029,14 @@
             "type" : [ "string", "null" ]
           }
         }, {
+          "description" : "Quoted current case revision, for example \"3\".",
+          "in" : "header",
+          "name" : "If-Match",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
           "description" : "Authenticated portal actor supplied by the trusted portal BFF.",
           "in" : "header",
           "name" : "X-Grounds-Actor-Id",
@@ -1298,13 +2045,13 @@
             "type" : [ "string", "null" ]
           }
         }, {
-          "description" : "Exact effective portal permission for this operation.",
+          "description" : "Comma-separated effective case permissions supplied by the portal BFF.",
           "in" : "header",
-          "name" : "X-Grounds-Portal-Permission",
+          "name" : "X-Grounds-Portal-Permissions",
           "required" : true,
           "schema" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "moderation.finding.confirm" ]
+            "enum" : [ "moderation.case.decide" ]
           }
         }, {
           "description" : "Optional request correlation identifier.",
@@ -1533,6 +2280,197 @@
         "security" : [ {
           "bearerAuth" : [ ]
         } ]
+      }
+    },
+    "/v1/moderation/cases/{caseId}/reassignment" : {
+      "post" : {
+        "tags" : [ "Moderation cases" ],
+        "parameters" : [ {
+          "name" : "caseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReassignCaseRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Reassign"
+      }
+    },
+    "/v1/moderation/cases/{caseId}/release" : {
+      "post" : {
+        "tags" : [ "Moderation cases" ],
+        "parameters" : [ {
+          "name" : "caseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Release"
+      }
+    },
+    "/v1/moderation/cases/{caseId}/resolve" : {
+      "post" : {
+        "tags" : [ "Moderation cases" ],
+        "parameters" : [ {
+          "name" : "caseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CaseDecisionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Resolve"
       }
     },
     "/v1/moderation/evidence-captures/{captureId}/completion" : {
@@ -1826,6 +2764,14 @@
             "type" : [ "string", "null" ]
           }
         }, {
+          "description" : "Quoted current case revision, for example \"3\".",
+          "in" : "header",
+          "name" : "If-Match",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
           "description" : "Authenticated portal actor supplied by the trusted portal BFF.",
           "in" : "header",
           "name" : "X-Grounds-Actor-Id",
@@ -1834,13 +2780,13 @@
             "type" : [ "string", "null" ]
           }
         }, {
-          "description" : "Exact effective portal permission for this operation.",
+          "description" : "Comma-separated effective case permissions supplied by the portal BFF.",
           "in" : "header",
-          "name" : "X-Grounds-Portal-Permission",
+          "name" : "X-Grounds-Portal-Permissions",
           "required" : true,
           "schema" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "moderation.finding.correct" ]
+            "enum" : [ "moderation.case.decide" ]
           }
         }, {
           "description" : "Optional request correlation identifier.",
@@ -2078,6 +3024,72 @@
               "application/problem+json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/player-reports/status" : {
+      "get" : {
+        "summary" : "List the reporting player's safe report statuses",
+        "tags" : [ "Moderation intake" ],
+        "parameters" : [ {
+          "name" : "X-Grounds-Player-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlayerReportStatusListResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/player-reports/{publicReference}/status" : {
+      "get" : {
+        "summary" : "Get the reporting player's safe report status",
+        "description" : "Returns no evidence, moderator identity, internal reason, or target details.",
+        "tags" : [ "Moderation intake" ],
+        "parameters" : [ {
+          "name" : "publicReference",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Grounds-Player-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlayerReportStatusResponse"
                 }
               }
             }
