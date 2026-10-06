@@ -23,6 +23,13 @@
       "default": false
     },
     {
+      "id": "metrics-proxy",
+      "title": "Metrics API",
+      "slug": "metrics",
+      "path": "metrics-proxy/openapi.json",
+      "default": false
+    },
+    {
       "id": "service-moderation",
       "title": "Moderation API",
       "slug": "moderation",
