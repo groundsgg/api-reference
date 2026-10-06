@@ -1,16 +1,18 @@
 # Grounds API Reference
 
-This repository builds the public, central OpenAPI reference for Grounds services. It renders versioned specification snapshots with Scalar and is designed to be served at [api.grounds.gg/docs](https://api.grounds.gg/docs).
+This repository builds the public, central OpenAPI reference for Grounds services. It renders versioned specification snapshots with Scalar and is deployed as a Cloudflare Worker at [apidocs-demo.grounds.workers.dev/docs](https://apidocs-demo.grounds.workers.dev/docs/).
 
 The application is self-contained: it never fetches specifications from running services and does not require service credentials at runtime. Until the first API is published, the empty registry produces a supported empty state.
 
 ## Architecture
 
-Service repositories generate and validate their own OpenAPI documents. A reviewable integration pull request copies a released snapshot into this repository and updates the source registry. CI validates the registry and every referenced document before building the static application and its unprivileged container image.
+Service repositories generate and validate their own OpenAPI documents. A reviewable integration pull request copies a released snapshot into this repository and updates the source registry. CI validates the registry and every referenced document before building the static application and the Worker that serves it.
 
 ```text
-service release -> snapshot pull request -> api-reference image -> grounds-pulumi -> /docs
+service release -> snapshot pull request -> api-reference build -> Cloudflare Worker -> /docs
 ```
+
+The Worker in `worker/index.ts` owns routing. Static assets are uploaded with the Worker and read through its `ASSETS` binding: the Worker redirects `/` to `/docs/`, strips the `/docs` base path before reading an asset, answers `/docs/healthz`, falls back to the application shell for client-routed paths, and returns `404` outside `/docs`.
 
 ## Local development
 
@@ -18,7 +20,7 @@ Requirements:
 
 - Node.js 24
 - npm
-- Docker, when building or testing the runtime image
+- A Cloudflare account with Workers access, when deploying
 
 Install dependencies and start Vite:
 
@@ -91,41 +93,47 @@ Live service URLs, internal hostnames, private repository URLs, credentials, and
 
 Service pipelines may automate creation of the integration pull request later, but the snapshot and registry changes remain reviewable repository changes.
 
-## Container
+## Worker
 
-Build and run the same unprivileged image used by the release workflow:
+Build the application and run the deployed Worker locally:
 
 ```shell
-docker build --tag api-reference:local .
-docker run --rm --publish 8080:8080 api-reference:local
+npm run preview:worker
 ```
 
-Available endpoints:
+Available endpoints, identical locally and in production:
 
-- `http://localhost:8080/docs` redirects permanently to `/docs/`.
-- `http://localhost:8080/docs/` serves the application.
-- `http://localhost:8080/docs/specs/registry.json` serves the source registry.
-- `http://localhost:8080/docs/healthz` returns `ok`.
+- `/` and `/docs` redirect permanently to `/docs/`.
+- `/docs/` serves the application, with `Cache-Control: no-cache`.
+- `/docs/assets/…` serves hashed bundles as `public, max-age=31536000, immutable`.
+- `/docs/specs/registry.json` serves the source registry as `public, max-age=300`.
+- `/docs/healthz` returns `ok`.
 - Paths outside `/docs` return `404`.
 
-Run `bash scripts/container-smoke.sh` to build a disposable image and verify the routing, cache headers, health endpoint, and unprivileged runtime user.
+`worker/index.test.ts` covers this routing contract; CI additionally builds the Worker bundle with `wrangler deploy --dry-run`.
+
+Deploy manually from a Cloudflare-authenticated shell:
+
+```shell
+npm run deploy
+```
 
 ## Releases
 
-Release Please creates releases from Conventional Commits. Tags follow `api-reference-v<version>` and publish these images:
+Release Please creates releases from Conventional Commits. Tags follow `api-reference-v<version>` and deploy the Worker `apidocs-demo` from the tagged revision.
 
-```text
-ghcr.io/groundsgg/api-reference:<version>
-ghcr.io/groundsgg/api-reference:latest
-```
+The release workflow needs two repository secrets:
+
+- `CLOUDFLARE_API_TOKEN` with the `Workers Scripts: Edit` permission
+- `CLOUDFLARE_ACCOUNT_ID`
 
 ## Responsibility boundaries
 
 - **Service repositories** own OpenAPI generation, service-level validation, and the source revision represented by a snapshot.
-- **This repository** owns the public registry, snapshot validation, Scalar rendering, the static runtime image, and its release pipeline.
-- **`grounds-pulumi`** owns the image pin, Kubernetes resources, probes, security policy, and routing `api.grounds.gg/docs` to this image.
+- **This repository** owns the public registry, snapshot validation, Scalar rendering, the Worker that serves it, and its release pipeline.
+- **Cloudflare** owns hosting and TLS. Custom domains and Worker routes are configured on the account, not in this repository.
 - **`groundsgg/docs`** owns the Mintlify navigation entry that links to the deployed API reference.
 
-Kubernetes resources, DNS, Mintlify navigation, service-specific generation, cross-repository pull-request automation, SDK generation, AsyncAPI, and authenticated API requests are outside this repository.
+DNS, Cloudflare account configuration, Mintlify navigation, service-specific generation, cross-repository pull-request automation, SDK generation, AsyncAPI, and authenticated API requests are outside this repository.
 
 Implementation is tracked in [GitHub issue #1](https://github.com/groundsgg/api-reference/issues/1) and the [API01.1 implementation plan](https://grounds.atlassian.net/wiki/spaces/gkd/pages/242909186).
