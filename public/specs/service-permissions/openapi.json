@@ -75,7 +75,7 @@
       "EffectiveGrantResponse" : {
         "description" : "Effective allow or deny grant and its origin.",
         "type" : "object",
-        "required" : [ "effect", "permissionPattern", "scopeKind", "scopeValue", "expiresAt", "source", "grantId", "roleKey", "mappingId", "inheritedPath", "editable" ],
+        "required" : [ "effect", "permissionPattern", "scopeKind", "scopeValue", "startsAt", "expiresAt", "source", "grantId", "roleKey", "mappingId", "inheritedPath", "editable" ],
         "properties" : {
           "effect" : {
             "$ref" : "#/components/schemas/PermissionEffect"
@@ -88,6 +88,13 @@
           },
           "scopeValue" : {
             "type" : [ "string", "null" ]
+          },
+          "startsAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
           },
           "expiresAt" : {
             "anyOf" : [ {
@@ -305,6 +312,13 @@
             "pattern" : "\\S",
             "description" : "Absent for GLOBAL; a nonblank value is required for other scope kinds."
           },
+          "startsAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "expiresAt" : {
             "anyOf" : [ {
               "$ref" : "#/components/schemas/Instant"
@@ -457,6 +471,13 @@
             "minLength" : 1,
             "pattern" : "^[a-z0-9._-]+$"
           },
+          "startsAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "expiresAt" : {
             "anyOf" : [ {
               "$ref" : "#/components/schemas/Instant"
@@ -469,7 +490,7 @@
       "KeycloakGroupMappingResponse" : {
         "description" : "Mapping from a Keycloak group to a permission role.",
         "type" : "object",
-        "required" : [ "id", "keycloakGroup", "roleKey", "expiresAt" ],
+        "required" : [ "id", "keycloakGroup", "roleKey", "startsAt", "expiresAt" ],
         "properties" : {
           "id" : {
             "$ref" : "#/components/schemas/UUID"
@@ -479,6 +500,13 @@
           },
           "roleKey" : {
             "type" : "string"
+          },
+          "startsAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
           },
           "expiresAt" : {
             "anyOf" : [ {
@@ -921,7 +949,7 @@
       "PlayerEffectiveRoleResponse" : {
         "description" : "Effective player role and the assignments that contributed it.",
         "type" : "object",
-        "required" : [ "id", "roleKey", "roleName", "source", "expiresAt", "editable", "directGrant", "inherited", "assignments" ],
+        "required" : [ "id", "roleKey", "roleName", "source", "startsAt", "expiresAt", "editable", "directGrant", "inherited", "assignments" ],
         "properties" : {
           "id" : {
             "type" : "string"
@@ -934,6 +962,13 @@
           },
           "source" : {
             "$ref" : "#/components/schemas/PermissionGrantOriginKind"
+          },
+          "startsAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
           },
           "expiresAt" : {
             "anyOf" : [ {
@@ -966,7 +1001,7 @@
       "PlayerGrantResponse" : {
         "description" : "Direct permission grant assigned to a player.",
         "type" : "object",
-        "required" : [ "id", "playerId", "effect", "permissionPattern", "scopeKind", "scopeValue", "expiresAt" ],
+        "required" : [ "id", "playerId", "effect", "permissionPattern", "scopeKind", "scopeValue", "startsAt", "expiresAt" ],
         "properties" : {
           "id" : {
             "$ref" : "#/components/schemas/UUID"
@@ -985,6 +1020,13 @@
           },
           "scopeValue" : {
             "type" : [ "string", "null" ]
+          },
+          "startsAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
           },
           "expiresAt" : {
             "anyOf" : [ {
@@ -1041,6 +1083,13 @@
             "minLength" : 1,
             "pattern" : "^[a-z0-9._-]+$"
           },
+          "startsAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "expiresAt" : {
             "anyOf" : [ {
               "$ref" : "#/components/schemas/Instant"
@@ -1053,7 +1102,7 @@
       "PlayerRoleGrantResponse" : {
         "type" : "object",
         "description" : "Direct role assignment for a player.",
-        "required" : [ "id", "playerId", "roleKey", "expiresAt" ],
+        "required" : [ "id", "playerId", "roleKey", "startsAt", "expiresAt" ],
         "properties" : {
           "id" : {
             "$ref" : "#/components/schemas/UUID"
@@ -1063,6 +1112,13 @@
           },
           "roleKey" : {
             "type" : "string"
+          },
+          "startsAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
           },
           "expiresAt" : {
             "anyOf" : [ {
@@ -1133,7 +1189,7 @@
       "RoleGrantResponse" : {
         "description" : "Permission grant assigned to a role.",
         "type" : "object",
-        "required" : [ "id", "roleKey", "effect", "permissionPattern", "scopeKind", "scopeValue", "expiresAt" ],
+        "required" : [ "id", "roleKey", "effect", "permissionPattern", "scopeKind", "scopeValue", "startsAt", "expiresAt" ],
         "properties" : {
           "id" : {
             "$ref" : "#/components/schemas/UUID"
@@ -1152,6 +1208,13 @@
           },
           "scopeValue" : {
             "type" : [ "string", "null" ]
+          },
+          "startsAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
           },
           "expiresAt" : {
             "anyOf" : [ {
@@ -1547,6 +1610,13 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "startsAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
           }
         }
       },
@@ -1619,6 +1689,13 @@
             "type" : [ "string", "null" ]
           },
           "expiresAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "startsAt" : {
             "anyOf" : [ {
               "$ref" : "#/components/schemas/Instant"
             }, {
@@ -2629,7 +2706,7 @@
           "in" : "query",
           "schema" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "group", "role", "expiration" ]
+            "enum" : [ "group", "role", "activation", "expiration" ]
           },
           "required" : false,
           "description" : "Field used to order results."
@@ -3363,7 +3440,7 @@
           "in" : "query",
           "schema" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "permission", "effect", "scope", "source", "expiration" ]
+            "enum" : [ "permission", "effect", "scope", "source", "activation", "expiration" ]
           },
           "required" : false,
           "description" : "Field used to order results."
@@ -3669,7 +3746,7 @@
           "in" : "query",
           "schema" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "permission", "effect", "scope", "expiration" ]
+            "enum" : [ "permission", "effect", "scope", "activation", "expiration" ]
           },
           "required" : false,
           "description" : "Field used to order results."
@@ -4332,7 +4409,7 @@
           "in" : "query",
           "schema" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "role", "source", "expiration" ]
+            "enum" : [ "role", "source", "activation", "expiration" ]
           },
           "required" : false,
           "description" : "Field used to order results."
@@ -5257,7 +5334,7 @@
           "in" : "query",
           "schema" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "permission", "effect", "scope", "expiration" ]
+            "enum" : [ "permission", "effect", "scope", "activation", "expiration" ]
           },
           "required" : false,
           "description" : "Field used to order results."

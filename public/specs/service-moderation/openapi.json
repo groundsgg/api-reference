@@ -663,7 +663,7 @@
       },
       "MessageChannel" : {
         "type" : "string",
-        "enum" : [ "GLOBAL", "SERVER", "PARTY", "PRIVATE" ]
+        "enum" : [ "GLOBAL", "SERVER", "GROUP", "PARTY", "PRIVATE" ]
       },
       "MessageVisibility" : {
         "type" : "string",
@@ -1251,7 +1251,7 @@
   "info" : {
     "description" : "Internal REST API for moderation reports, evidence, and policy management.",
     "title" : "Moderation API",
-    "version" : "0.1.1"
+    "version" : "0.2.0"
   },
   "tags" : [ {
     "name" : "Automatic moderation findings"

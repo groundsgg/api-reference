@@ -1,0 +1,131 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Metrics API",
+    "version": "1.0.0",
+    "description": "Scrape the Grounds metrics assigned to your API key in the Prometheus text format, with your own Prometheus or any tool that reads it.\n\n**Each key returns only the metrics Grounds assigned to it.** You cannot send a query: the metrics are agreed with Grounds when the key is issued, and request parameters such as `?query=` or `?match[]=` are ignored. Ask your Grounds contact for a key and say which metrics you need.\n\n**Keys are shown once.** Grounds stores only the key's SHA-256 hash, so a lost key cannot be recovered. To rotate, request a new key, switch to it, then ask Grounds to revoke the old one. Issuing and revoking a key takes effect within a few minutes.\n\n**Rate limit:** 30 requests per minute per key, counted in fixed one-minute windows. A 15-second scrape interval uses 4; 30 or 60 seconds is usually enough.\n\n### Scrape with Prometheus\n\nSave the key in a file readable only by the user Prometheus runs as, then add:\n\n```yaml\nscrape_configs:\n  - job_name: grounds\n    scheme: https\n    metrics_path: /v1/metrics\n    scrape_interval: 60s\n    honor_labels: true\n    authorization:\n      type: Bearer\n      credentials_file: /etc/prometheus/grounds-metrics-key\n    static_configs:\n      - targets: [\"api.grounds.gg\"]\n```\n\n`honor_labels: true` keeps the labels Grounds sends as they are. In Prometheus, **Status → Targets** should show the `grounds` target as `UP`."
+  },
+  "servers": [
+    {
+      "url": "https://api.grounds.gg",
+      "description": "Production"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Metrics",
+      "description": "Prometheus-format metrics scoped to your API key."
+    }
+  ],
+  "security": [
+    {
+      "metricsKey": []
+    }
+  ],
+  "paths": {
+    "/v1/metrics": {
+      "get": {
+        "operationId": "getMetrics",
+        "summary": "Scrape your assigned metrics",
+        "description": "Returns the metrics assigned to the key in the [Prometheus text exposition format](https://prometheus.io/docs/instrumenting/exposition_formats/#text-based-format), evaluated at request time.\n\n- Each value is the latest sample Grounds holds for that series.\n- A series whose newest sample is older than five minutes is left out. Treat a missing series as \"no data\", not as `0`.\n- Every metric is `untyped`; there are no `# HELP` lines and no timestamps, so your scraper stamps samples with its own scrape time.\n- The path is exact: `/v1/metrics/` with a trailing slash returns `404`. Only `GET` is allowed; other methods return `405` with `Allow: GET`.",
+        "tags": [
+          "Metrics"
+        ],
+        "security": [
+          {
+            "metricsKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The metrics assigned to your key. The names and labels in the example are illustrative.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "text/plain; version=0.0.4; charset=utf-8": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "# TYPE grounds_players_online untyped\ngrounds_players_online 128\n# TYPE grounds_players_by_mode untyped\ngrounds_players_by_mode{mode=\"bedwars\"} 40\ngrounds_players_by_mode{mode=\"duel\"} 22\n"
+              }
+            }
+          },
+          "401": {
+            "description": "The `Authorization` header is missing, is not `Bearer <key>`, or the key is unknown or revoked. A newly issued key can take a few minutes to become active.",
+            "content": {
+              "text/plain; charset=utf-8": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "unauthorized\n"
+              }
+            },
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "Always `Bearer realm=\"grounds metrics\"`.",
+                "schema": {
+                  "type": "string",
+                  "const": "Bearer realm=\"grounds metrics\""
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The key exceeded 30 requests in the current minute. Wait `Retry-After` seconds, then lengthen your scrape interval.",
+            "content": {
+              "text/plain; charset=utf-8": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "too many requests\n"
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the current one-minute window ends.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 60
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Grounds could not evaluate one of your metrics. The whole response fails, so you never receive a partial set. Retry on your next scrape; if it persists, contact Grounds.",
+            "content": {
+              "text/plain; charset=utf-8": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "upstream query failed\n"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "metricsKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "gmk_ API key",
+        "description": "A metrics API key issued by Grounds, starting with `gmk_`. Send it as `Authorization: Bearer <key>`."
+      }
+    },
+    "headers": {
+      "CacheControl": {
+        "description": "Responses are never cached.",
+        "schema": {
+          "type": "string",
+          "const": "no-store"
+        }
+      }
+    }
+  }
+}
