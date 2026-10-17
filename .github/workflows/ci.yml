@@ -45,5 +45,5 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Test container
-        run: bash scripts/container-smoke.sh
+      - name: Validate Worker bundle
+        run: npx wrangler deploy --dry-run --outdir "${RUNNER_TEMP}/worker"

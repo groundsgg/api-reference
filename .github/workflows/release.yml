@@ -13,17 +13,13 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   metadata:
     name: Resolve release metadata
     runs-on: ubuntu-latest
     outputs:
-      commit: ${{ steps.metadata.outputs.commit }}
       ref: ${{ steps.release.outputs.ref }}
-      timestamp: ${{ steps.metadata.outputs.timestamp }}
-      version: ${{ steps.release.outputs.version }}
     steps:
       - name: Check out workflow revision
         uses: actions/checkout@v6
@@ -57,20 +53,8 @@ jobs:
           echo "ref=${ref}" >> "${GITHUB_OUTPUT}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
 
-      - name: Check out release ref
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: ${{ steps.release.outputs.ref }}
-
-      - name: Read commit metadata
-        id: metadata
-        run: |
-          echo "commit=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
-          echo "timestamp=$(git show --no-patch --format=%cI HEAD)" >> "${GITHUB_OUTPUT}"
-
-  image:
-    name: Publish container image
+  worker:
+    name: Deploy Worker
     needs: metadata
     runs-on: ubuntu-latest
     steps:
@@ -79,40 +63,21 @@ jobs:
         with:
           ref: ${{ needs.metadata.outputs.ref }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          node-version: 24
+          cache: npm
 
-      - name: Generate image metadata
-        id: image-metadata
-        uses: docker/metadata-action@v6
-        with:
-          images: ghcr.io/groundsgg/api-reference
-          tags: |
-            type=raw,value=${{ needs.metadata.outputs.version }}
-            type=raw,value=latest
-          labels: |
-            org.opencontainers.image.created=${{ needs.metadata.outputs.timestamp }}
-            org.opencontainers.image.revision=${{ needs.metadata.outputs.commit }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.title=Grounds API Reference
-            org.opencontainers.image.version=${{ needs.metadata.outputs.version }}
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Build and publish image
-        uses: docker/build-push-action@v7
+      - name: Build application
+        run: npm run build
+
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
         with:
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          context: .
-          platforms: linux/amd64
-          provenance: mode=max
-          push: true
-          sbom: true
-          tags: ${{ steps.image-metadata.outputs.tags }}
-          labels: ${{ steps.image-metadata.outputs.labels }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
