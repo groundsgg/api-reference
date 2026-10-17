@@ -2,6 +2,112 @@
   "openapi" : "3.1.0",
   "components" : {
     "schemas" : {
+      "ExactSessionClaimRequest" : {
+        "description" : "Claim a connection-owned player session.",
+        "type" : "object",
+        "required" : [ "playerId", "sessionId" ],
+        "properties" : {
+          "playerId" : {
+            "type" : [ "string", "null" ]
+          },
+          "sessionId" : {
+            "type" : [ "string", "null" ]
+          },
+          "playerName" : {
+            "type" : [ "string", "null" ]
+          },
+          "proxyId" : {
+            "type" : [ "string", "null" ]
+          },
+          "region" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "ExactSessionClaimResponse" : {
+        "description" : "The admitted connection and lease.",
+        "type" : "object",
+        "required" : [ "playerId", "sessionId", "leaseExpiresAt" ],
+        "properties" : {
+          "playerId" : {
+            "type" : "string"
+          },
+          "sessionId" : {
+            "type" : "string"
+          },
+          "leaseExpiresAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "ExactSessionHandoffConsumeRequest" : {
+        "type" : "object",
+        "required" : [ "playerId", "sessionId", "handoffToken" ],
+        "properties" : {
+          "playerId" : {
+            "type" : [ "string", "null" ]
+          },
+          "sessionId" : {
+            "type" : [ "string", "null" ]
+          },
+          "handoffToken" : {
+            "type" : [ "string", "null" ]
+          },
+          "playerName" : {
+            "type" : [ "string", "null" ]
+          },
+          "proxyId" : {
+            "type" : [ "string", "null" ]
+          },
+          "region" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "ExactSessionHandoffIssueRequest" : {
+        "type" : "object",
+        "required" : [ "sessionId" ],
+        "properties" : {
+          "sessionId" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "ExactSessionHeartbeatEntry" : {
+        "type" : "object",
+        "required" : [ "playerId", "sessionId" ],
+        "properties" : {
+          "playerId" : {
+            "type" : [ "string", "null" ]
+          },
+          "sessionId" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "ExactSessionHeartbeatRequest" : {
+        "type" : "object",
+        "properties" : {
+          "sessions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ExactSessionHeartbeatEntry"
+            }
+          }
+        }
+      },
+      "ExactSessionServerRequest" : {
+        "type" : "object",
+        "required" : [ "sessionId", "serverName" ],
+        "properties" : {
+          "sessionId" : {
+            "type" : [ "string", "null" ]
+          },
+          "serverName" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
       "HeartbeatRequest" : {
         "description" : "Every player a proxy still holds, in one call. Batched because a proxy with a thousand players would otherwise send a thousand requests per interval.",
         "type" : "object",
@@ -97,6 +203,17 @@
             "type" : [ "string", "null" ],
             "description" : "BCP-47 language tag. Null when the player has never chosen one — the caller falls back to the locale the client announces.",
             "examples" : [ "de-DE" ]
+          }
+        }
+      },
+      "PlayerRegion" : {
+        "description" : "A player's preferred (default) region.",
+        "type" : "object",
+        "properties" : {
+          "region" : {
+            "type" : [ "string", "null" ],
+            "description" : "Region-catalogue code. Null when the player has never chosen one.",
+            "examples" : [ "eu" ]
           }
         }
       },
@@ -241,6 +358,17 @@
           }
         }
       },
+      "SetRegionRequest" : {
+        "description" : "Store or clear a preferred region.",
+        "type" : "object",
+        "properties" : {
+          "region" : {
+            "type" : [ "string", "null" ],
+            "description" : "The region code to store; null or blank clears the preference. Must match `[a-z0-9-]{1,32}`. Membership in the region catalogue is not checked.",
+            "examples" : [ "eu" ]
+          }
+        }
+      },
       "UpdateServerRequest" : {
         "description" : "The backend server a player has moved to.",
         "type" : "object",
@@ -265,7 +393,7 @@
   "info" : {
     "description" : "Network-wide player presence: who is online, on which proxy and backend server, under what name, and in which language they want to be spoken to.\n\nA proxy only knows the players connected to itself, so anything that spans proxies — a private message, a party invite, an accurate player count — has to ask here. The session table is the network's single answer to \"is this player online\"; a login is a claim on it, and a second one is refused.\n\nSessions are presence and are deleted on logout. Names outlive them: a separate, never-deleted index is written at every login, which is what lets a leaderboard or a match history show a name rather than a raw UUID.",
     "title" : "Player API",
-    "version" : "main"
+    "version" : "v2.3.0"
   },
   "tags" : [ {
     "name" : "Counts",
@@ -276,6 +404,9 @@
   }, {
     "name" : "Names",
     "description" : "The durable id-to-name index and tab-complete."
+  }, {
+    "name" : "Region",
+    "description" : "Per-player preferred region."
   }, {
     "name" : "Sessions",
     "description" : "Live presence: login, logout, heartbeats, and session lookup."
@@ -693,6 +824,103 @@
         } ]
       }
     },
+    "/v1/players/{playerId}/region" : {
+      "put" : {
+        "summary" : "Store or clear a player's preferred region",
+        "description" : "A null or blank `region` clears the preference. Only the code's shape (`[a-z0-9-]{1,32}`) is checked — the caller validates it against the region catalogue it actually serves.",
+        "tags" : [ "Region" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SetRegionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "The preference was stored or cleared."
+          },
+          "400" : {
+            "description" : "`playerId` is not a UUID, or `region` is not a well-formed code.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "This service has never seen the player. The preference lives on the durable player row, which is written at login, so there is nothing to write against.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "get" : {
+        "summary" : "Read a player's preferred region",
+        "description" : "A player who has never chosen one reads as null, and the caller falls back to its own default — that is a normal answer, not a missing resource.",
+        "tags" : [ "Region" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The stored region code, or null when the player has never chosen one.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlayerRegion"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "`playerId` is not a UUID.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/v1/players/{playerId}/session" : {
       "get" : {
         "summary" : "Read a player's session",
@@ -862,6 +1090,222 @@
         "security" : [ {
           "bearerAuth" : [ ]
         } ]
+      }
+    },
+    "/v2/players/sessions" : {
+      "post" : {
+        "summary" : "Claim an exact player connection session",
+        "description" : "The authenticated Minecraft profile UUID and a per-connection session UUID identify the lease. A proxy ID change cannot replace an active session.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ExactSessionClaimRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "Player Session V 2 Resource" ]
+      }
+    },
+    "/v2/players/sessions/heartbeats" : {
+      "post" : {
+        "summary" : "Renew exact connection leases",
+        "description" : "Each entry must match both the Minecraft profile UUID and session UUID.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ExactSessionHeartbeatRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "Player Session V 2 Resource" ]
+      }
+    },
+    "/v2/players/sessions/transfer" : {
+      "post" : {
+        "summary" : "Consume a one-use profile-bound session handoff",
+        "description" : "A valid token atomically fences the source session and admits the destination.",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ExactSessionHandoffConsumeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "Player Session V 2 Resource" ]
+      }
+    },
+    "/v2/players/{playerId}/session" : {
+      "delete" : {
+        "summary" : "Release one exact connection session",
+        "description" : "A delayed disconnect cannot remove a later session for the same profile.",
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "sessionId",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "Player Session V 2 Resource" ]
+      }
+    },
+    "/v2/players/{playerId}/session/server" : {
+      "put" : {
+        "summary" : "Set the backend server for an exact connection session",
+        "description" : "A stale connection cannot overwrite its successor's server location.",
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ExactSessionServerRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "Player Session V 2 Resource" ]
+      }
+    },
+    "/v2/players/{playerId}/session/transfer" : {
+      "post" : {
+        "summary" : "Issue a short-lived one-use session handoff token",
+        "description" : "Only the active exact session can authorize a transfer of its profile.",
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ExactSessionHandoffIssueRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "tags" : [ "Player Session V 2 Resource" ]
       }
     }
   },
