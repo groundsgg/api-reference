@@ -2,10 +2,29 @@
   "openapi" : "3.1.0",
   "components" : {
     "schemas" : {
+      "ActiveMatchResponse" : {
+        "description" : "The match a player is playing, for a proxy offering them a rejoin.",
+        "type" : "object",
+        "required" : [ "matchId" ],
+        "properties" : {
+          "matchId" : {
+            "type" : "string"
+          },
+          "modeId" : {
+            "type" : "string",
+            "description" : "Mode within the project.",
+            "examples" : [ "duel" ]
+          },
+          "gameServerName" : {
+            "type" : "string",
+            "description" : "The GameServer, as the proxy has it registered."
+          }
+        }
+      },
       "AssignmentResponse" : {
         "description" : "The server a matched player should be routed to.",
         "type" : "object",
-        "required" : [ "matchId", "gameServerName", "address" ],
+        "required" : [ "matchId", "port" ],
         "properties" : {
           "matchId" : {
             "type" : "string"
@@ -60,6 +79,33 @@
           }
         }
       },
+      "BoardBody" : {
+        "description" : "A stat board a mode writes.",
+        "type" : "object",
+        "properties" : {
+          "stat" : {
+            "type" : [ "string", "null" ],
+            "description" : "Matches [a-z0-9_-]{1,32}.",
+            "examples" : [ "wins" ]
+          },
+          "displayName" : {
+            "type" : [ "string", "null" ],
+            "description" : "Max 64 characters. Omit to show the stat."
+          }
+        }
+      },
+      "BoardResponse" : {
+        "type" : "object",
+        "required" : [ "stat", "displayName" ],
+        "properties" : {
+          "stat" : {
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string"
+          }
+        }
+      },
       "CancelTicketResponse" : {
         "description" : "Whether a ticket was withdrawn.",
         "type" : "object",
@@ -106,9 +152,92 @@
           }
         }
       },
+      "MatchPresenceRequestBody" : {
+        "description" : "Whether the player is in their match right now.",
+        "type" : "object",
+        "required" : [ "connected" ],
+        "properties" : {
+          "connected" : {
+            "type" : [ "boolean", "null" ],
+            "description" : "False when the player dropped off the network: the match is kept for the rejoin grace only. True once they are back in it."
+          }
+        }
+      },
+      "ModeResponse" : {
+        "description" : "A live mode, as the lobby lists it.",
+        "type" : "object",
+        "required" : [ "modeId", "teamSize", "teamCount", "playersPerMatch", "minPlayers", "ranked", "rejoinEnabled", "boards", "ticketsQueued" ],
+        "properties" : {
+          "modeId" : {
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string",
+            "description" : "The mode id when the mode registered none."
+          },
+          "icon" : {
+            "type" : [ "string", "null" ]
+          },
+          "teamSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "teamCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "playersPerMatch" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "minPlayers" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "ranked" : {
+            "type" : "boolean"
+          },
+          "rejoinEnabled" : {
+            "type" : "boolean"
+          },
+          "boards" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BoardResponse"
+            }
+          },
+          "ticketsQueued" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "leases" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Unexpired leases. Zero for a permanent mode."
+          },
+          "permanent" : {
+            "type" : "boolean",
+            "description" : "True for a mode never registered with a lease."
+          }
+        }
+      },
+      "ModesResponse" : {
+        "description" : "Every live mode: permanent, or leased with at least one live lease.",
+        "type" : "object",
+        "properties" : {
+          "modes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ModeResponse"
+            },
+            "description" : "Sorted by modeId."
+          }
+        }
+      },
       "PlayerResultBody" : {
         "description" : "Where one player finished.",
         "type" : "object",
+        "required" : [ "playerId" ],
         "properties" : {
           "playerId" : {
             "type" : [ "string", "null" ]
@@ -123,7 +252,7 @@
       "ProblemDetails" : {
         "description" : "RFC 9457 problem details.",
         "type" : "object",
-        "required" : [ "title", "code" ],
+        "required" : [ "title", "status", "detail" ],
         "properties" : {
           "title" : {
             "type" : "string"
@@ -145,6 +274,7 @@
       "QueueStatsResponse" : {
         "description" : "Queue depth for a mode, for UI.",
         "type" : "object",
+        "required" : [ "ticketsQueued" ],
         "properties" : {
           "ticketsQueued" : {
             "type" : "integer",
@@ -159,6 +289,7 @@
       "RatingResponse" : {
         "description" : "A player's Weng-Lin rating for one mode. Ratings are global, not per region.",
         "type" : "object",
+        "required" : [ "mu", "sigma", "gamesPlayed" ],
         "properties" : {
           "mu" : {
             "type" : "number",
@@ -214,7 +345,6 @@
       "TicketResponse" : {
         "description" : "Where a ticket stands.",
         "type" : "object",
-        "required" : [ "state" ],
         "properties" : {
           "state" : {
             "type" : "string",
@@ -234,7 +364,8 @@
             "type" : "integer",
             "format" : "int32"
           }
-        }
+        },
+        "required" : [ "queueDepth" ]
       },
       "UpsertQueueRequestBody" : {
         "description" : "A mode's matchmaking configuration, as forge pushes it from the `matchmaking:` block in grounds.yaml. There is no hot reload: the next queue tick picks it up.",
@@ -266,12 +397,51 @@
           "fleetName" : {
             "type" : [ "string", "null" ],
             "description" : "The Agones Fleet that serves this mode. Omit when the fleet is named after the mode, which is the usual case. Set it when one image serves several modes — a duel server builds a different arena per mode and runs all of them from one pool, and a fleet per mode would idle a set of servers for each."
+          },
+          "minPlayers" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "description" : "The fewest players a match may start with. Omit for teamSize * teamCount, which always waits for a full match. Lower only for a free-for-all (teamSize 1): after fillSeconds an under-filled match forms from whoever is queued, as long as that is at least this many."
+          },
+          "fillSeconds" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "description" : "How long the longest-waiting player waits for a full match before an under-filled one forms. Ignored unless minPlayers is lowered."
+          },
+          "leaseId" : {
+            "type" : [ "string", "null" ],
+            "description" : "Identity of the registering game server, its HOSTNAME. Present makes this registration a lease: the mode then exists only while at least one lease is unexpired. Omit for a permanent mode."
+          },
+          "leaseSeconds" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32",
+            "description" : "Lease TTL in seconds, 15..600. Renewed by repeating the PUT. Default 60."
+          },
+          "displayName" : {
+            "type" : [ "string", "null" ],
+            "description" : "Shown in the lobby. Max 64 characters. Omit to show the mode id."
+          },
+          "icon" : {
+            "type" : [ "string", "null" ],
+            "description" : "Minecraft item key for the lobby, e.g. `minecraft:iron_sword`."
+          },
+          "boards" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "$ref" : "#/components/schemas/BoardBody"
+            },
+            "description" : "Stat boards the game writes as `<modeId>.<stat>`. The first is the default for /leaderboard."
+          },
+          "rejoinEnabled" : {
+            "type" : "boolean",
+            "description" : "Whether a disconnected player may rejoin a running match."
           }
         }
       },
       "UpsertQueueResponse" : {
         "description" : "Whether the upsert created the mode or replaced an existing config.",
         "type" : "object",
+        "required" : [ "created" ],
         "properties" : {
           "created" : {
             "type" : "boolean"
@@ -299,6 +469,9 @@
   }, {
     "name" : "Ratings",
     "description" : "Weng-Lin ratings, global per player and mode."
+  }, {
+    "name" : "Rejoin",
+    "description" : "The match a player is playing, for offering a rejoin."
   }, {
     "name" : "Results",
     "description" : "Report a finished match and move the ladder."
@@ -359,6 +532,96 @@
         } ]
       }
     },
+    "/v1/match/modes" : {
+      "get" : {
+        "summary" : "Every live mode",
+        "description" : "Permanent modes, and leased modes with at least one unexpired lease, with their lobby metadata and queue depth. Sorted by modeId.",
+        "tags" : [ "Modes" ],
+        "responses" : {
+          "200" : {
+            "description" : "The live modes.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ModesResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/match/modes/{modeId}" : {
+      "delete" : {
+        "summary" : "Remove a mode",
+        "description" : "Admin only. Removes the mode whether permanent or leased, and cancels every ticket still waiting in its queue.",
+        "tags" : [ "Modes" ],
+        "parameters" : [ {
+          "name" : "modeId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "The mode is gone."
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          },
+          "403" : {
+            "description" : "The caller is not an admin."
+          },
+          "404" : {
+            "description" : "There is no such mode."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/match/modes/{modeId}/leases/{leaseId}" : {
+      "delete" : {
+        "summary" : "Release a lease",
+        "description" : "Called by a game server on graceful shutdown. Idempotent. When it was the mode's last lease, the mode is removed and its waiting tickets are cancelled.",
+        "tags" : [ "Modes" ],
+        "parameters" : [ {
+          "name" : "leaseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "modeId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "The lease is gone."
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/v1/match/modes/{modeId}/queue" : {
       "put" : {
         "summary" : "Create or replace a mode's matchmaking config",
@@ -394,7 +657,7 @@
             }
           },
           "400" : {
-            "description" : "teamSize or teamCount is out of range."
+            "description" : "A field is missing or out of range."
           },
           "401" : {
             "description" : "Authentication is missing or invalid."
@@ -431,6 +694,114 @@
           },
           "401" : {
             "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/match/players/{playerId}/match" : {
+      "delete" : {
+        "summary" : "Leave the match for good",
+        "description" : "The player went back to a lobby, or the match server sent them away. Idempotent.",
+        "tags" : [ "Rejoin" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No match is offered to the player."
+          },
+          "400" : {
+            "description" : "playerId is not a UUID."
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "get" : {
+        "summary" : "Read the match a player is playing",
+        "description" : "404 is the ordinary answer: the player is in no match, it has ended, they left it, or they were away longer than the rejoin grace.",
+        "tags" : [ "Rejoin" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The player's running match.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ActiveMatchResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "playerId is not a UUID."
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          },
+          "404" : {
+            "description" : "The player has no running match."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/match/players/{playerId}/match/presence" : {
+      "put" : {
+        "summary" : "Report the player dropping off, or coming back",
+        "description" : "`connected: false` keeps the match for the rejoin grace only; `connected: true` gives it the lifetime of the match again.",
+        "tags" : [ "Rejoin" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MatchPresenceRequestBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Recorded."
+          },
+          "400" : {
+            "description" : "playerId is not a UUID, or connected is missing."
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          },
+          "404" : {
+            "description" : "The player has no running match."
           }
         },
         "security" : [ {
@@ -577,7 +948,8 @@
           "schema" : {
             "description" : "Checked against the ticket's owner.",
             "type" : [ "string", "null" ]
-          }
+          },
+          "required" : true
         } ],
         "responses" : {
           "200" : {
