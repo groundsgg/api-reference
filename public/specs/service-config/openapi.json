@@ -1,0 +1,723 @@
+{
+  "openapi" : "3.1.0",
+  "components" : {
+    "schemas" : {
+      "ConfigDefault" : {
+        "description" : "A document to create if the app does not have it.",
+        "type" : "object",
+        "required" : [ "namespace", "configKey", "defaultContentJson" ],
+        "properties" : {
+          "namespace" : {
+            "type" : [ "string", "null" ]
+          },
+          "configKey" : {
+            "type" : [ "string", "null" ]
+          },
+          "defaultContentJson" : {
+            "type" : [ "string", "null" ],
+            "description" : "Must be valid JSON."
+          }
+        }
+      },
+      "ConfigDocument" : {
+        "description" : "One configuration document.",
+        "type" : "object",
+        "properties" : {
+          "namespace" : {
+            "type" : "string",
+            "description" : "Grouping within the app, e.g. `motd`."
+          },
+          "configKey" : {
+            "type" : "string",
+            "description" : "The document's key within the namespace."
+          },
+          "contentJson" : {
+            "type" : "string",
+            "description" : "The document itself, as a JSON string."
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The document's own version, for optimistic writes."
+          }
+        }
+      },
+      "ConfigDocumentDetail" : {
+        "description" : "One configuration document together with its last write.",
+        "type" : "object",
+        "properties" : {
+          "namespace" : {
+            "type" : "string",
+            "description" : "Grouping within the app, e.g. `motd`."
+          },
+          "configKey" : {
+            "type" : "string",
+            "description" : "The document's key within the namespace."
+          },
+          "contentJson" : {
+            "type" : "string",
+            "description" : "The document itself, as a JSON string."
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The document's own version, for optimistic writes."
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "description" : "When the document was last written, as an ISO-8601 instant."
+          },
+          "updatedBy" : {
+            "type" : [ "string", "null" ],
+            "description" : "Who last wrote the document, if the writer recorded it."
+          }
+        }
+      },
+      "ConfigDocumentKey" : {
+        "description" : "Namespace and key of one document.",
+        "type" : "object",
+        "required" : [ "namespace", "configKey" ],
+        "properties" : {
+          "namespace" : {
+            "type" : "string"
+          },
+          "configKey" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ConfigDocumentList" : {
+        "description" : "Documents an operator asked to see.",
+        "type" : "object",
+        "required" : [ "documents" ],
+        "properties" : {
+          "documents" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ConfigDocument"
+            }
+          }
+        }
+      },
+      "ConfigSnapshot" : {
+        "description" : "Every document a caller should hold, at one version.",
+        "type" : "object",
+        "properties" : {
+          "version" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The snapshot's version. Send it back as `If-None-Match` and an unchanged snapshot answers 304 with no body."
+          },
+          "documents" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ConfigDocument"
+            }
+          }
+        },
+        "required" : [ "documents" ]
+      },
+      "CreateConfigDocument" : {
+        "description" : "A document that must not exist yet.",
+        "type" : "object",
+        "required" : [ "configKey", "contentJson" ],
+        "properties" : {
+          "configKey" : {
+            "type" : [ "string", "null" ]
+          },
+          "contentJson" : {
+            "type" : [ "string", "null" ],
+            "description" : "Must be valid JSON."
+          },
+          "updatedBy" : {
+            "type" : [ "string", "null" ],
+            "description" : "Who to record as the author."
+          }
+        }
+      },
+      "DeleteResult" : {
+        "description" : "Whether a document was there to delete.",
+        "type" : "object",
+        "required" : [ "deleted", "version" ],
+        "properties" : {
+          "deleted" : {
+            "type" : "boolean"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "Problem" : {
+        "description" : "A failed request, in RFC 9457 problem-details form.",
+        "type" : "object",
+        "properties" : {
+          "title" : {
+            "type" : "string",
+            "description" : "Short, human-readable summary.",
+            "examples" : [ "Not ranked" ]
+          },
+          "status" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "HTTP status, repeated in the body.",
+            "examples" : [ 404 ]
+          },
+          "detail" : {
+            "type" : [ "string", "null" ],
+            "description" : "What went wrong with this specific request.",
+            "examples" : [ "The player has no entry on this board for season s0." ]
+          },
+          "code" : {
+            "type" : "string",
+            "description" : "Stable machine-readable code. Branch on this, not on the prose.",
+            "examples" : [ "not_ranked", "invalid_request", "unauthenticated", "forbidden" ]
+          }
+        }
+      },
+      "PutConfigDocument" : {
+        "description" : "A document to create or replace.",
+        "type" : "object",
+        "required" : [ "contentJson" ],
+        "properties" : {
+          "contentJson" : {
+            "type" : [ "string", "null" ],
+            "description" : "Must be valid JSON."
+          },
+          "updatedBy" : {
+            "type" : [ "string", "null" ],
+            "description" : "Who to record as the author."
+          },
+          "expectedVersion" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "The version the caller believes is current. Omitted writes unconditionally only when If-Match is also absent; body expectedVersion and If-Match are mutually exclusive. A mismatch is a 409 rather than a silent overwrite of somebody else's change."
+          }
+        }
+      },
+      "SyncDefaultsRequest" : {
+        "description" : "The documents an app expects to exist, sent on startup.",
+        "type" : "object",
+        "required" : [ "defaults" ],
+        "properties" : {
+          "defaults" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "$ref" : "#/components/schemas/ConfigDefault"
+            }
+          }
+        }
+      },
+      "SyncDefaultsResult" : {
+        "description" : "What the sync created.",
+        "type" : "object",
+        "properties" : {
+          "version" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The app's version after the sync."
+          },
+          "createdKeys" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ConfigDocumentKey"
+            },
+            "description" : "Only the documents that did not exist before."
+          }
+        }
+      },
+      "WriteResult" : {
+        "description" : "The app's version after a write.",
+        "type" : "object",
+        "required" : [ "version" ],
+        "properties" : {
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      }
+    },
+    "securitySchemes" : {
+      "bearerAuth" : {
+        "type" : "http",
+        "description" : "The projected ServiceAccount token from /var/run/secrets/grounds/token, with the grounds-services audience.",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
+      }
+    }
+  },
+  "info" : {
+    "description" : "Versioned configuration documents, addressed as (app, env, namespace, key).\n\nA service declares the documents it expects on startup and then reads a snapshot; only the missing documents are created, so an operator's edit survives every redeploy. Snapshots carry a version as an `ETag`, and a caller that sends it back gets a 304 when nothing has moved.\n\nChanges are also announced on NATS, so a service learns that its configuration moved without polling for it. The event carries the version, not the documents — the reader comes back here for those.\n\nReading is open to any authenticated workload. Browsing is admin-only, while creating, replacing, and deleting one app's documents can be granted to that app's own ServiceAccount.",
+    "title" : "Config API",
+    "version" : "v1.5.0"
+  },
+  "tags" : [ {
+    "name" : "Config",
+    "description" : "Versioned configuration documents."
+  }, {
+    "name" : "Config admin",
+    "description" : "Editing configuration documents."
+  } ],
+  "paths" : {
+    "/v1/config/admin/apps/{app}/envs/{env}/documents" : {
+      "get" : {
+        "summary" : "List an app's documents",
+        "description" : "Admin only. `namespace` narrows the listing; omitted lists the whole app.",
+        "tags" : [ "Config admin" ],
+        "parameters" : [ {
+          "name" : "app",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "env",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "namespace",
+          "in" : "query",
+          "schema" : {
+            "type" : "string",
+            "default" : ""
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "403" : {
+            "description" : "The caller is not an admin ServiceAccount."
+          }
+        }
+      }
+    },
+    "/v1/config/admin/apps/{app}/envs/{env}/namespaces/{namespace}/documents" : {
+      "post" : {
+        "summary" : "Create a document that does not exist yet",
+        "description" : "Admin, an app writer, or an exact-document writer. This atomically creates only when the document is absent; an existing document is never replaced.",
+        "tags" : [ "Config admin" ],
+        "parameters" : [ {
+          "name" : "app",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "env",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "namespace",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateConfigDocument"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "409" : {
+            "description" : "The document already exists."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        }
+      }
+    },
+    "/v1/config/admin/apps/{app}/envs/{env}/namespaces/{namespace}/documents/{configKey}" : {
+      "put" : {
+        "summary" : "Create or replace a document",
+        "description" : "Admin, an app writer, or an exact-document writer. Send either `If-Match` with one strong document ETag or `expectedVersion` in the body to make the write conditional; a mismatch answers 409 rather than quietly overwriting somebody else's change.",
+        "tags" : [ "Config admin" ],
+        "parameters" : [ {
+          "name" : "app",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "configKey",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "env",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "namespace",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PutConfigDocument"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "The write result and its new version ETag.",
+            "headers" : {
+              "ETag" : {
+                "description" : "Strong ETag containing the document's new version.",
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WriteResult"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The body expectedVersion or If-Match version is no longer current."
+          },
+          "400" : {
+            "description" : "If-Match is invalid or conflicts with body expectedVersion."
+          }
+        }
+      },
+      "get" : {
+        "summary" : "Read any document",
+        "description" : "Admin only. The response carries a strong `ETag` holding this document's version.",
+        "tags" : [ "Config admin" ],
+        "parameters" : [ {
+          "name" : "app",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "configKey",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "env",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "namespace",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The document and its version ETag.",
+            "headers" : {
+              "ETag" : {
+                "description" : "Strong ETag containing the document's version.",
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfigDocument"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No such document."
+          }
+        }
+      },
+      "delete" : {
+        "summary" : "Delete a document",
+        "description" : "Admin, an app writer, or an exact-document writer.",
+        "tags" : [ "Config admin" ],
+        "parameters" : [ {
+          "name" : "app",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "configKey",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "env",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "namespace",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DeleteResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/config/apps/{app}/envs/{env}/defaults" : {
+      "post" : {
+        "summary" : "Create any of these documents the app does not have yet",
+        "description" : "What a service calls on startup to declare the configuration it expects. Only the missing documents are created — an existing one is left exactly as an operator last edited it, which is what makes this safe to call on every boot.",
+        "tags" : [ "Config" ],
+        "parameters" : [ {
+          "name" : "app",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "env",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SyncDefaultsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SyncDefaultsResult"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        }
+      }
+    },
+    "/v1/config/apps/{app}/envs/{env}/namespaces/{namespace}/documents/{configKey}" : {
+      "get" : {
+        "summary" : "Read a single document",
+        "description" : "The response carries a strong `ETag` holding this document's version.",
+        "tags" : [ "Config" ],
+        "parameters" : [ {
+          "name" : "app",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "configKey",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "env",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "namespace",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The document, its last write, and its version ETag.",
+            "headers" : {
+              "ETag" : {
+                "description" : "Strong ETag containing the document's version.",
+                "schema" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfigDocumentDetail"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No such document."
+          }
+        }
+      }
+    },
+    "/v1/config/apps/{app}/envs/{env}/namespaces/{namespace}/snapshot" : {
+      "get" : {
+        "summary" : "Read one namespace of an app's documents",
+        "tags" : [ "Config" ],
+        "parameters" : [ {
+          "name" : "app",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "env",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "namespace",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfigSnapshot"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/config/apps/{app}/envs/{env}/snapshot" : {
+      "get" : {
+        "summary" : "Read every document for an app and environment",
+        "description" : "The response carries an `ETag` holding the snapshot's version. Send it back as `If-None-Match` and an unchanged snapshot answers 304 with no body — which is how a polling service avoids re-reading configuration that has not moved.",
+        "tags" : [ "Config" ],
+        "parameters" : [ {
+          "name" : "app",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "env",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "If-None-Match",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The snapshot.",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "304" : {
+            "description" : "Nothing changed since the given version."
+          }
+        }
+      }
+    }
+  },
+  "servers" : [ {
+    "url" : "http://localhost:9000",
+    "description" : "Auto generated value"
+  }, {
+    "url" : "http://0.0.0.0:9000",
+    "description" : "Auto generated value"
+  } ]
+}

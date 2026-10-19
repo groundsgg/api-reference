@@ -2,6 +2,20 @@
   "schemaVersion": 1,
   "sources": [
     {
+      "id": "metrics-proxy",
+      "title": "Metrics API",
+      "slug": "metrics",
+      "path": "metrics-proxy/openapi.json",
+      "default": false
+    },
+    {
+      "id": "service-config",
+      "title": "Config API",
+      "slug": "config",
+      "path": "service-config/openapi.json",
+      "default": false
+    },
+    {
       "id": "service-leaderboard",
       "title": "Leaderboard API",
       "slug": "leaderboard",
@@ -20,13 +34,6 @@
       "title": "Match API",
       "slug": "match",
       "path": "service-match/openapi.json",
-      "default": false
-    },
-    {
-      "id": "metrics-proxy",
-      "title": "Metrics API",
-      "slug": "metrics",
-      "path": "metrics-proxy/openapi.json",
       "default": false
     },
     {
