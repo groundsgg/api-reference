@@ -3,7 +3,7 @@
   "info" : {
     "description" : "The registry for Minecraft maps: what exists, which versions were published, and which version each environment serves.\n\n**Bundles do not pass through this API.** An upload is a presigned URL the client PUTs to directly, and game servers read published content from the CDN — they never call this service.\n\n**Publishing is not going live.** A published version is merely pinnable; moving a pin is what changes the map every player loads, and it is granted separately.\n\n**Uploaded maps may derive asynchronously.** When derivation is enabled, commit an uploaded source, poll its exact version until it reaches a terminal state, and retry only retryable SYSTEM failures through the derive retry endpoint.",
     "title" : "Maps API",
-    "version" : "local-SNAPSHOT"
+    "version" : "unspecified"
   },
   "tags" : [ {
     "name" : "Maps",
@@ -14,6 +14,8 @@
   }, {
     "name" : "Pins",
     "description" : "Which version an environment serves. Going live and rolling back."
+  }, {
+    "name" : "Workspaces"
   } ],
   "components" : {
     "securitySchemes" : {
@@ -124,6 +126,24 @@
           }
         }
       },
+      "OpenSnapshotRequest" : {
+        "type" : "object",
+        "properties" : {
+          "base" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "files" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "$ref" : "#/components/schemas/WorkspaceFile"
+            }
+          },
+          "shrink" : {
+            "type" : "boolean"
+          }
+        }
+      },
       "PublishVersionRequest" : {
         "type" : "object",
         "required" : [ "bundleSha256" ],
@@ -145,6 +165,22 @@
           "estLoadedMib" : {
             "type" : [ "integer", "null" ],
             "format" : "int32"
+          }
+        }
+      },
+      "WorkspaceFile" : {
+        "type" : "object",
+        "required" : [ "path", "sha256" ],
+        "properties" : {
+          "path" : {
+            "type" : "string"
+          },
+          "sha256" : {
+            "type" : "string"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int64"
           }
         }
       }
@@ -648,6 +684,129 @@
           },
           "400" : {
             "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "keycloakBearer" : [ ]
+        } ]
+      }
+    },
+    "/v1/workspaces/{server}/head" : {
+      "get" : {
+        "summary" : "Read the working-copy head",
+        "description" : "Every file of the head snapshot with a presigned GET. 404 before the first commit.",
+        "tags" : [ "Workspaces" ],
+        "parameters" : [ {
+          "name" : "server",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "security" : [ {
+          "keycloakBearer" : [ ]
+        } ]
+      }
+    },
+    "/v1/workspaces/{server}/snapshots" : {
+      "post" : {
+        "summary" : "Open a working-copy snapshot",
+        "description" : "Returns the snapshot number and a presigned PUT for every blob the bucket does not have yet. Refused with 409 when base is not the head.",
+        "tags" : [ "Workspaces" ],
+        "parameters" : [ {
+          "name" : "server",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/OpenSnapshotRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "keycloakBearer" : [ ]
+        } ]
+      }
+    },
+    "/v1/workspaces/{server}/snapshots/{snapshot}/commit" : {
+      "post" : {
+        "summary" : "Commit a working-copy snapshot",
+        "description" : "Makes the snapshot the head once every blob it introduced is in the bucket.",
+        "tags" : [ "Workspaces" ],
+        "parameters" : [ {
+          "name" : "server",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "snapshot",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
           }
         },
         "security" : [ {
