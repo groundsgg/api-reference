@@ -195,6 +195,30 @@
           }
         }
       },
+      "OnlineCount" : {
+        "description" : "How many of the given players are online.",
+        "type" : "object",
+        "required" : [ "online" ],
+        "properties" : {
+          "online" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "OnlineCountRequest" : {
+        "description" : "The players to check, e.g. a friend list.",
+        "type" : "object",
+        "properties" : {
+          "playerIds" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "type" : "string"
+            },
+            "description" : "Player UUIDs. Malformed ones do not count, and ids beyond the server's cap of 100 are ignored."
+          }
+        }
+      },
       "PlayerLocale" : {
         "description" : "A player's chosen interface language.",
         "type" : "object",
@@ -249,6 +273,22 @@
             "description" : "When the session was created.",
             "type" : "string",
             "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "Playtime" : {
+        "description" : "How long a player has been online, across sessions.",
+        "type" : "object",
+        "properties" : {
+          "totalMillis" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Time online on any server, the lobby included, in milliseconds."
+          },
+          "playMillis" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The part of `totalMillis` spent on game servers: everything except lobbies and the time between servers."
           }
         }
       },
@@ -393,7 +433,7 @@
   "info" : {
     "description" : "Network-wide player presence: who is online, on which proxy and backend server, under what name, and in which language they want to be spoken to.\n\nA proxy only knows the players connected to itself, so anything that spans proxies — a private message, a party invite, an accurate player count — has to ask here. The session table is the network's single answer to \"is this player online\"; a login is a claim on it, and a second one is refused.\n\nSessions are presence and are deleted on logout. Names outlive them: a separate, never-deleted index is written at every login, which is what lets a leaderboard or a match history show a name rather than a raw UUID.",
     "title" : "Player API",
-    "version" : "v2.3.0"
+    "version" : "v2.5.0"
   },
   "tags" : [ {
     "name" : "Counts",
@@ -405,6 +445,9 @@
     "name" : "Names",
     "description" : "The durable id-to-name index and tab-complete."
   }, {
+    "name" : "Playtime",
+    "description" : "Accumulated online and game time per player."
+  }, {
     "name" : "Region",
     "description" : "Per-player preferred region."
   }, {
@@ -412,6 +455,54 @@
     "description" : "Live presence: login, logout, heartbeats, and session lookup."
   } ],
   "paths" : {
+    "/v1/players/counts/online" : {
+      "post" : {
+        "summary" : "How many of the given players are online",
+        "description" : "The lobby's \"friends online\": the caller already holds the id list (a friend list from service-social) and only needs the number. A POST because a full list of UUIDs as query parameters outgrows the request line.",
+        "tags" : [ "Counts" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/OnlineCountRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "The number of those players holding a session.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OnlineCount"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          },
+          "503" : {
+            "description" : "The session store could not be read.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/v1/players/counts/proxies" : {
       "get" : {
         "summary" : "Players per proxy and region",
@@ -817,6 +908,59 @@
           },
           "401" : {
             "description" : "Authentication is missing or invalid."
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/players/{playerId}/playtime" : {
+      "get" : {
+        "summary" : "Read a player's playtime",
+        "description" : "Includes the segment that is still running, so the number ticks up while the player is online. A player who has never been seen reads as zero, not as a missing resource.",
+        "tags" : [ "Playtime" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Total and game time in milliseconds.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Playtime"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "`playerId` is not a UUID.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing or invalid."
+          },
+          "503" : {
+            "description" : "The store could not be read. Deliberately not zero.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            }
           }
         },
         "security" : [ {
