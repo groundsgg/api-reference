@@ -2,6 +2,10 @@
   "openapi" : "3.1.0",
   "components" : {
     "schemas" : {
+      "AppealStatus" : {
+        "type" : "string",
+        "enum" : [ "SUBMITTED", "IN_REVIEW", "ACCEPTED", "REJECTED", "WITHDRAWN" ]
+      },
       "AppendEvidenceMessagesRequest" : {
         "description" : "Additional immutable messages for an open evidence capture.",
         "examples" : [ {
@@ -73,6 +77,96 @@
         "type" : "string",
         "enum" : [ "STATIC_FILTER", "OPENAI_MODERATION", "SELF_HOSTED_MODEL" ]
       },
+      "AutomaticEnforcementAction" : {
+        "type" : "string",
+        "enum" : [ "MESSAGE_BLOCK", "MESSAGE_DELETE", "CHAT_MUTE" ]
+      },
+      "AutomaticEnforcementMode" : {
+        "type" : "string",
+        "enum" : [ "SHADOW", "ENFORCED" ]
+      },
+      "AutomaticEnforcementOutcome" : {
+        "type" : "string",
+        "enum" : [ "SHADOW", "BLOCKED", "CREATED", "UNSUPPORTED", "NOT_ALLOWED", "SKIPPED_ALREADY_CONFIRMED" ]
+      },
+      "AutomaticEnforcementRequest" : {
+        "type" : "object",
+        "required" : [ "action" ],
+        "properties" : {
+          "action" : {
+            "$ref" : "#/components/schemas/AutomaticEnforcementAction"
+          },
+          "durationSeconds" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          }
+        }
+      },
+      "AutomaticEnforcementResult" : {
+        "type" : "object",
+        "required" : [ "action", "outcome" ],
+        "properties" : {
+          "action" : {
+            "$ref" : "#/components/schemas/AutomaticEnforcementAction"
+          },
+          "outcome" : {
+            "$ref" : "#/components/schemas/AutomaticEnforcementOutcome"
+          },
+          "enforcementId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "publicReference" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "AutomaticEnforcementRule" : {
+        "type" : "object",
+        "required" : [ "source", "ruleId", "ruleVersion", "violationType", "action", "mode", "enabled" ],
+        "properties" : {
+          "source" : {
+            "$ref" : "#/components/schemas/AutomaticConfirmationSource"
+          },
+          "ruleId" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "ruleVersion" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "violationType" : {
+            "$ref" : "#/components/schemas/ViolationType"
+          },
+          "action" : {
+            "$ref" : "#/components/schemas/AutomaticEnforcementAction"
+          },
+          "maximumDuration" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Duration"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "mode" : {
+            "$ref" : "#/components/schemas/AutomaticEnforcementMode"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "shadowPolicyVersionId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
       "AutomaticFindingDecisionRequest" : {
         "description" : "Immutable classification result for one stored system message report.",
         "type" : "object",
@@ -89,6 +183,13 @@
             "type" : "number",
             "maximum" : 1,
             "minimum" : 0
+          },
+          "enforcement" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/AutomaticEnforcementRequest"
+            }, {
+              "type" : "null"
+            } ]
           }
         }
       },
@@ -112,16 +213,456 @@
           },
           "replay" : {
             "type" : "boolean"
+          },
+          "enforcement" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/AutomaticEnforcementResult"
+            }, {
+              "type" : "null"
+            } ]
           }
         }
       },
       "AutomaticFindingOutcome" : {
         "type" : "string",
-        "enum" : [ "CONFIRMED", "SHADOW", "NOT_ALLOWED", "NO_ACTIVE_POLICY", "INSUFFICIENT_EVIDENCE", "ALREADY_CONFIRMED" ]
+        "enum" : [ "CONFIRMED", "SHADOW", "NOT_ALLOWED", "NO_ACTIVE_POLICY", "INSUFFICIENT_EVIDENCE", "ALREADY_CONFIRMED", "UNSUPPORTED_ENFORCEMENT" ]
       },
       "CaptureStatus" : {
         "type" : "string",
         "enum" : [ "OPEN", "COMPLETE", "INCOMPLETE" ]
+      },
+      "CaseAssignmentFilter" : {
+        "type" : "string",
+        "enum" : [ "ANY", "ASSIGNED", "UNASSIGNED" ]
+      },
+      "CaseAuditResponse" : {
+        "type" : "object",
+        "required" : [ "eventId", "eventType", "actorType", "actorId", "details", "occurredAt" ],
+        "properties" : {
+          "eventId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "eventType" : {
+            "type" : "string"
+          },
+          "actorType" : {
+            "type" : "string"
+          },
+          "actorId" : {
+            "type" : [ "string", "null" ]
+          },
+          "details" : {
+            "$ref" : "#/components/schemas/JsonNode"
+          },
+          "occurredAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "CaseDecisionRequest" : {
+        "type" : "object",
+        "properties" : {
+          "playerOutcome" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/PlayerCaseOutcome"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "reasonCode" : {
+            "type" : "string"
+          },
+          "internalReason" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "reasonCode", "internalReason" ]
+      },
+      "CaseDetailResponse" : {
+        "description" : "Authorized Portal projection of one moderation case.",
+        "type" : "object",
+        "required" : [ "caseId", "status", "priority", "revision", "createdAt", "updatedAt", "resolvedAt", "assignedModeratorId", "assignedAt", "reports", "audit", "primaryMessageId", "caseReference" ],
+        "properties" : {
+          "caseId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/CaseStatus"
+          },
+          "priority" : {
+            "$ref" : "#/components/schemas/CasePriority"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "resolvedAt" : {
+            "type" : [ "string", "null" ],
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "assignedModeratorId" : {
+            "type" : [ "string", "null" ]
+          },
+          "assignedAt" : {
+            "type" : [ "string", "null" ],
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "reports" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CaseReportResponse"
+            }
+          },
+          "audit" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "$ref" : "#/components/schemas/CaseAuditResponse"
+            }
+          },
+          "primaryMessageId" : {
+            "description" : "Canonical originally reported message ID stored on this case.",
+            "type" : [ "string", "null" ],
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "caseReference" : {
+            "type" : "string",
+            "pattern" : "^C-[A-HJ-NP-Z2-9]{8}$",
+            "description" : "Stable internal case reference. Does not grant access.",
+            "examples" : [ "C-7K3M2QXY" ]
+          },
+          "origin" : {
+            "type" : "string"
+          },
+          "targetPlayerId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "targetPlayerName" : {
+            "type" : [ "string", "null" ],
+            "description" : "Last-known durable Minecraft name of the case target, when available."
+          }
+        }
+      },
+      "CaseEvidenceResponse" : {
+        "type" : "object",
+        "required" : [ "messageId", "sequence", "senderPlayerId", "content", "sentAt", "role", "channel", "visibility", "participantPlayerIds", "signatureStatus" ],
+        "properties" : {
+          "messageId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "sequence" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "senderPlayerId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "content" : {
+            "type" : "string"
+          },
+          "sentAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "role" : {
+            "$ref" : "#/components/schemas/EvidenceRole"
+          },
+          "channel" : {
+            "$ref" : "#/components/schemas/MessageChannel"
+          },
+          "visibility" : {
+            "$ref" : "#/components/schemas/MessageVisibility"
+          },
+          "participantPlayerIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "format" : "uuid",
+              "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+            }
+          },
+          "signatureStatus" : {
+            "$ref" : "#/components/schemas/SignatureStatus"
+          },
+          "senderPlayerName" : {
+            "type" : [ "string", "null" ],
+            "description" : "Last-known Minecraft name for the message sender."
+          },
+          "forumPost" : {
+            "description" : "Web forum post behind FORUM evidence.",
+            "type" : [ "object", "null" ],
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/ForumPostReference"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "CaseListItemResponse" : {
+        "description" : "Stable, privacy-safe item in the moderation case queue.",
+        "type" : "object",
+        "required" : [ "caseId", "status", "priority", "revision", "createdAt", "updatedAt", "assignedModeratorId", "assignedAt", "targetPlayerId", "category", "source", "reportCount", "evidenceStatus", "caseReference" ],
+        "properties" : {
+          "caseId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/CaseStatus"
+          },
+          "priority" : {
+            "$ref" : "#/components/schemas/CasePriority"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "assignedModeratorId" : {
+            "type" : [ "string", "null" ]
+          },
+          "assignedAt" : {
+            "type" : [ "string", "null" ],
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "targetPlayerId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "category" : {
+            "$ref" : "#/components/schemas/ReportCategory"
+          },
+          "source" : {
+            "type" : [ "string", "null" ]
+          },
+          "reportCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "evidenceStatus" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/CaptureStatus"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "caseReference" : {
+            "type" : "string",
+            "pattern" : "^C-[A-HJ-NP-Z2-9]{8}$",
+            "description" : "Stable internal case reference. Does not grant access.",
+            "examples" : [ "C-7K3M2QXY" ]
+          },
+          "targetPlayerName" : {
+            "type" : [ "string", "null" ],
+            "description" : "Last-known Minecraft name for the target player."
+          },
+          "origin" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CasePriority" : {
+        "type" : "string",
+        "enum" : [ "LOW", "NORMAL", "HIGH", "CRITICAL" ]
+      },
+      "CaseQueryPageResponse" : {
+        "type" : "object",
+        "required" : [ "items", "nextCursor" ],
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CaseListItemResponse"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "CaseQueueTab" : {
+        "type" : "string",
+        "enum" : [ "OPEN", "MY", "COMPLETED" ]
+      },
+      "CaseReportResponse" : {
+        "type" : "object",
+        "required" : [ "reportId", "type", "reporterPlayerId", "targetPlayerId", "category", "source", "submittedAt", "evidenceCaptureId", "captureStatus", "incompleteReason", "evidence" ],
+        "properties" : {
+          "reportId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/ReportType"
+          },
+          "reporterPlayerId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "targetPlayerId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "category" : {
+            "$ref" : "#/components/schemas/ReportCategory"
+          },
+          "source" : {
+            "type" : [ "string", "null" ]
+          },
+          "submittedAt" : {
+            "type" : "string",
+            "examples" : [ "2022-03-10T16:15:50Z" ],
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "evidenceCaptureId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "captureStatus" : {
+            "$ref" : "#/components/schemas/CaptureStatus"
+          },
+          "incompleteReason" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/IncompleteReason"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "evidence" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CaseEvidenceResponse"
+            }
+          },
+          "publicReference" : {
+            "type" : [ "string", "null" ],
+            "description" : "Stored player report receipt, when available. Does not grant access.",
+            "examples" : [ "R-7K3M2Q" ]
+          },
+          "targetPlayerName" : {
+            "type" : [ "string", "null" ],
+            "description" : "Last-known Minecraft name for the target player."
+          }
+        }
+      },
+      "CaseStatus" : {
+        "type" : "string",
+        "enum" : [ "OPEN", "IN_REVIEW", "ACTION_REQUIRED", "RESOLVED", "DISMISSED" ]
+      },
+      "ChatMute" : {
+        "type" : "object",
+        "required" : [ "id", "publicReference", "caseId", "playerId", "findingId", "environment", "revision", "status", "startsAt", "expiresAt", "safeReasonCode" ],
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "publicReference" : {
+            "type" : "string"
+          },
+          "caseId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "playerId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "findingId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "environment" : {
+            "$ref" : "#/components/schemas/ModerationEnvironment"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/EnforcementStatus"
+          },
+          "startsAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "expiresAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "safeReasonCode" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ChatMutePreset" : {
+        "type" : "object",
+        "required" : [ "key", "durationSeconds" ],
+        "properties" : {
+          "key" : {
+            "type" : "string"
+          },
+          "durationSeconds" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "ChatMuteResponse" : {
+        "type" : "object",
+        "required" : [ "measure", "distribution" ],
+        "properties" : {
+          "measure" : {
+            "$ref" : "#/components/schemas/ChatMute"
+          },
+          "distribution" : {
+            "$ref" : "#/components/schemas/EnforcementDistributionStatus"
+          },
+          "replay" : {
+            "type" : "boolean"
+          }
+        }
       },
       "CompleteEvidenceCaptureRequest" : {
         "description" : "Requested terminal state for an open evidence capture.",
@@ -182,7 +723,7 @@
       "ConfirmManualFindingResponse" : {
         "description" : "Minimal result of a manual finding confirmation.",
         "type" : "object",
-        "required" : [ "findingId", "caseId", "source", "confirmedAt", "policyVersionId", "replay" ],
+        "required" : [ "findingId", "caseId", "source", "confirmedAt", "policyVersionId", "caseRevision", "replay" ],
         "properties" : {
           "findingId" : {
             "$ref" : "#/components/schemas/UUID"
@@ -204,6 +745,10 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "caseRevision" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
           },
           "replay" : {
             "type" : "boolean"
@@ -243,7 +788,7 @@
       "CorrectFindingResponse" : {
         "description" : "Minimal result of a finding correction.",
         "type" : "object",
-        "required" : [ "correctionId", "correctedFindingId", "replacementFindingId", "type", "correctedAt", "replay" ],
+        "required" : [ "correctionId", "correctedFindingId", "replacementFindingId", "type", "correctedAt", "caseRevision", "replay" ],
         "properties" : {
           "correctionId" : {
             "$ref" : "#/components/schemas/UUID"
@@ -266,8 +811,44 @@
             "examples" : [ "2022-03-10T16:15:50Z" ],
             "$ref" : "#/components/schemas/Instant"
           },
+          "caseRevision" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
           "replay" : {
             "type" : "boolean"
+          }
+        }
+      },
+      "CreateChatMuteRequest" : {
+        "type" : "object",
+        "required" : [ "operationId", "expectedCaseRevision", "presetKey", "category", "severity", "internalReason" ],
+        "properties" : {
+          "operationId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "expectedCaseRevision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "presetKey" : {
+            "type" : "string"
+          },
+          "category" : {
+            "type" : "string"
+          },
+          "severity" : {
+            "type" : "string"
+          },
+          "internalReason" : {
+            "type" : "string"
+          },
+          "findingId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
           }
         }
       },
@@ -305,7 +886,243 @@
       },
       "Duration" : {
         "type" : "string",
-        "format" : "duration"
+        "format" : "duration",
+        "examples" : [ "P1D" ]
+      },
+      "EnforcementApprovalDto" : {
+        "type" : "object",
+        "required" : [ "id", "kind", "status", "requestedBy", "expiresAt" ],
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "kind" : {
+            "$ref" : "#/components/schemas/EnforcementApprovalKind"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/EnforcementApprovalState"
+          },
+          "requestedBy" : {
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "internalReason" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "EnforcementApprovalKind" : {
+        "type" : "string",
+        "enum" : [ "CREATE", "REVOKE" ]
+      },
+      "EnforcementApprovalState" : {
+        "type" : "string",
+        "enum" : [ "PENDING", "APPROVED", "REJECTED", "WITHDRAWN", "EXPIRED" ]
+      },
+      "EnforcementDistributionStatus" : {
+        "type" : "string",
+        "enum" : [ "PENDING", "PARTIAL", "APPLIED" ]
+      },
+      "EnforcementHistoryPage" : {
+        "type" : "object",
+        "required" : [ "items", "nextCursor" ],
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EnforcementResponseDto"
+            }
+          },
+          "nextCursor" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "EnforcementMeasureDto" : {
+        "type" : "object",
+        "required" : [ "id", "publicReference", "environment", "caseId", "playerId", "findingId", "type", "status", "revision", "startsAt", "expiresAt", "remainingDurationMillis", "approvalExpiresAt", "createdBy", "source", "category", "severity", "createdAt", "updatedAt", "actionRetryUntil" ],
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "publicReference" : {
+            "type" : "string"
+          },
+          "environment" : {
+            "$ref" : "#/components/schemas/ModerationEnvironment"
+          },
+          "caseId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "playerId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "findingId" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/EnforcementType"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/EnforcementState"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "startsAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "expiresAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "remainingDurationMillis" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64"
+          },
+          "approvalExpiresAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "createdBy" : {
+            "type" : "string"
+          },
+          "source" : {
+            "$ref" : "#/components/schemas/EnforcementSource"
+          },
+          "category" : {
+            "$ref" : "#/components/schemas/ViolationType"
+          },
+          "severity" : {
+            "$ref" : "#/components/schemas/Severity"
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "updatedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "actionRetryUntil" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "EnforcementPresetDto" : {
+        "type" : "object",
+        "required" : [ "key", "durationSeconds" ],
+        "properties" : {
+          "key" : {
+            "type" : "string"
+          },
+          "durationSeconds" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "EnforcementPresetsResponse" : {
+        "type" : "object",
+        "required" : [ "presets", "types", "unboundedMuteAllowed", "customDurationAllowed", "maximumDurationSeconds" ],
+        "properties" : {
+          "presets" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EnforcementPresetDto"
+            }
+          },
+          "types" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EnforcementType"
+            }
+          },
+          "unboundedMuteAllowed" : {
+            "type" : "boolean"
+          },
+          "customDurationAllowed" : {
+            "type" : "boolean"
+          },
+          "maximumDurationSeconds" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "EnforcementProxyAckRequest" : {
+        "type" : "object",
+        "required" : [ "epoch", "cursor" ],
+        "properties" : {
+          "epoch" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "cursor" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "EnforcementProxyCapability" : {
+        "type" : "string",
+        "enum" : [ "CHAT_MUTE", "BAN_DISCONNECT", "MODERATION_KICK", "MESSAGE_DELETE_UNSUPPORTED" ]
+      },
+      "EnforcementResponseDto" : {
+        "type" : "object",
+        "required" : [ "measure", "distribution", "replay", "approval" ],
+        "properties" : {
+          "measure" : {
+            "$ref" : "#/components/schemas/EnforcementMeasureDto"
+          },
+          "distribution" : {
+            "$ref" : "#/components/schemas/GenericEnforcementDistributionStatus"
+          },
+          "replay" : {
+            "type" : "boolean"
+          },
+          "approval" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/EnforcementApprovalDto"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "EnforcementSource" : {
+        "type" : "string",
+        "enum" : [ "PORTAL", "MINECRAFT", "AUTOMATIC" ]
+      },
+      "EnforcementState" : {
+        "type" : "string",
+        "enum" : [ "PENDING_APPROVAL", "ACTIVE", "SUSPENDED", "COMPLETED", "EXPIRED", "REVOKED", "REJECTED", "WITHDRAWN", "FAILED" ]
+      },
+      "EnforcementStatus" : {
+        "type" : "string",
+        "enum" : [ "ACTIVE", "EXPIRED", "REVOKED" ]
+      },
+      "EnforcementType" : {
+        "type" : "string",
+        "enum" : [ "MESSAGE_DELETE", "MODERATION_KICK", "CHAT_MUTE", "TEMP_BAN", "PERMANENT_BAN", "FORUM_MUTE" ]
       },
       "EvidenceAppendReceipt" : {
         "description" : "Result of an idempotent evidence append operation.",
@@ -445,6 +1262,15 @@
           },
           "signatureStatus" : {
             "$ref" : "#/components/schemas/SignatureStatus"
+          },
+          "forumPost" : {
+            "description" : "Forum post reference; required exactly for FORUM evidence.",
+            "type" : "object",
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/ForumPostReference"
+            }, {
+              "type" : "null"
+            } ]
           }
         }
       },
@@ -485,6 +1311,10 @@
         "type" : "string",
         "enum" : [ "INVALIDATE", "RECLASSIFY" ]
       },
+      "FindingOrigin" : {
+        "type" : "string",
+        "enum" : [ "MESSAGE", "STAFF_ACTION" ]
+      },
       "FindingQueryItemResponse" : {
         "description" : "Safe portal projection of one confirmed moderation finding.",
         "type" : "object",
@@ -510,7 +1340,11 @@
             } ]
           },
           "primaryMessageId" : {
-            "$ref" : "#/components/schemas/UUID"
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
           },
           "supportingMessageIds" : {
             "type" : "array",
@@ -554,6 +1388,9 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "origin" : {
+            "$ref" : "#/components/schemas/FindingOrigin"
           }
         }
       },
@@ -572,6 +1409,60 @@
             "type" : [ "string", "null" ]
           }
         }
+      },
+      "ForumPostReference" : {
+        "type" : "object",
+        "description" : "Web forum post behind FORUM evidence. The message ID is derived from postId and revision.",
+        "examples" : [ {
+          "postId" : 4182,
+          "revision" : 1,
+          "topicId" : 311,
+          "categorySlug" : "general",
+          "url" : "https://grounds.gg/forum/t/311/welcome#post-4182",
+          "editedAt" : null
+        } ],
+        "required" : [ "postId", "revision", "topicId", "categorySlug", "url" ],
+        "properties" : {
+          "postId" : {
+            "type" : "integer",
+            "format" : "int64",
+            "minimum" : 1,
+            "examples" : [ 4182 ]
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1,
+            "examples" : [ 1 ]
+          },
+          "topicId" : {
+            "type" : "integer",
+            "format" : "int64",
+            "minimum" : 1,
+            "examples" : [ 311 ]
+          },
+          "categorySlug" : {
+            "type" : "string",
+            "examples" : [ "general" ]
+          },
+          "url" : {
+            "type" : "string",
+            "examples" : [ "https://grounds.gg/forum/t/311/welcome#post-4182" ]
+          },
+          "editedAt" : {
+            "type" : [ "string", "null" ],
+            "examples" : [ "2026-07-22T10:20:00Z" ],
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "GenericEnforcementDistributionStatus" : {
+        "type" : "string",
+        "enum" : [ "PENDING", "PARTIAL", "APPLIED", "NOT_ENFORCED" ]
       },
       "GlobalModerationStatus" : {
         "type" : "string",
@@ -661,17 +1552,267 @@
           }
         }
       },
+      "JsonNode" : {
+        "type" : "object",
+        "properties" : {
+          "empty" : {
+            "type" : "boolean"
+          },
+          "valueNode" : {
+            "type" : "boolean"
+          },
+          "containerNode" : {
+            "type" : "boolean"
+          },
+          "missingNode" : {
+            "type" : "boolean"
+          },
+          "array" : {
+            "type" : "boolean"
+          },
+          "object" : {
+            "type" : "boolean"
+          },
+          "nodeType" : {
+            "$ref" : "#/components/schemas/JsonNodeType"
+          },
+          "pojo" : {
+            "type" : "boolean"
+          },
+          "number" : {
+            "type" : "boolean"
+          },
+          "integralNumber" : {
+            "type" : "boolean"
+          },
+          "floatingPointNumber" : {
+            "type" : "boolean"
+          },
+          "short" : {
+            "type" : "boolean"
+          },
+          "int" : {
+            "type" : "boolean"
+          },
+          "long" : {
+            "type" : "boolean"
+          },
+          "float" : {
+            "type" : "boolean"
+          },
+          "double" : {
+            "type" : "boolean"
+          },
+          "bigDecimal" : {
+            "type" : "boolean"
+          },
+          "bigInteger" : {
+            "type" : "boolean"
+          },
+          "textual" : {
+            "type" : "boolean"
+          },
+          "boolean" : {
+            "type" : "boolean"
+          },
+          "null" : {
+            "type" : "boolean"
+          },
+          "binary" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "JsonNodeType" : {
+        "type" : "string",
+        "enum" : [ "ARRAY", "BINARY", "BOOLEAN", "MISSING", "NULL", "NUMBER", "OBJECT", "POJO", "STRING" ]
+      },
+      "KnownPlayerTarget" : {
+        "type" : "object",
+        "required" : [ "playerId", "playerName" ],
+        "properties" : {
+          "playerId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "playerName" : {
+            "type" : "string"
+          }
+        }
+      },
+      "LocalEnforcementOutcome" : {
+        "type" : "string",
+        "enum" : [ "APPLIED", "NO_LOCAL_SESSION", "UNSUPPORTED", "FAILED" ]
+      },
+      "LocalEnforcementResult" : {
+        "type" : "object",
+        "required" : [ "enforcementId", "revision", "outcome", "observedAt" ],
+        "properties" : {
+          "enforcementId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "outcome" : {
+            "$ref" : "#/components/schemas/LocalEnforcementOutcome"
+          },
+          "observedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
       "MessageChannel" : {
         "type" : "string",
-        "enum" : [ "GLOBAL", "SERVER", "GROUP", "PARTY", "PRIVATE" ]
+        "enum" : [ "GLOBAL", "SERVER", "GROUP", "PARTY", "PRIVATE", "FORUM" ]
       },
       "MessageVisibility" : {
         "type" : "string",
         "enum" : [ "PUBLIC", "PRIVATE" ]
       },
+      "MinecraftPlayerTargets" : {
+        "type" : "object",
+        "required" : [ "targets" ],
+        "properties" : {
+          "targets" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/KnownPlayerTarget"
+            }
+          }
+        }
+      },
+      "ModerationEnvironment" : {
+        "type" : "string",
+        "enum" : [ "stage", "prod" ]
+      },
       "ModerationStatusReasonCode" : {
         "type" : "string",
         "enum" : [ "CHAT_BEHAVIOR", "SOCIAL_BEHAVIOR", "REPORT_SYSTEM_USE" ]
+      },
+      "OwnedAppeal" : {
+        "type" : "object",
+        "required" : [ "id", "enforcementId", "status", "statement", "revision", "filedAt", "decidedAt", "safeExplanation", "filingDeadline" ],
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "enforcementId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/AppealStatus"
+          },
+          "statement" : {
+            "type" : "string"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "filedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "decidedAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "safeExplanation" : {
+            "type" : [ "string", "null" ]
+          },
+          "filingDeadline" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "OwnedMeasure" : {
+        "type" : "object",
+        "required" : [ "id", "publicReference", "playerId", "type", "status", "safeReasonCode", "startsAt", "expiresAt", "createdAt", "updatedAt", "appealEligible", "appealDeadline", "appeal" ],
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "publicReference" : {
+            "type" : "string"
+          },
+          "playerId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/EnforcementType"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/EnforcementState"
+          },
+          "safeReasonCode" : {
+            "type" : "string"
+          },
+          "startsAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "expiresAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "createdAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "updatedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "appealEligible" : {
+            "type" : "boolean"
+          },
+          "appealDeadline" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "appeal" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/OwnedAppeal"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "PlayerCaseOutcome" : {
+        "type" : "string",
+        "enum" : [ "MEASURES_TAKEN", "NO_MEASURES_TAKEN" ]
+      },
+      "PlayerForumStatusResponse" : {
+        "description" : "Player-safe forum posting restriction. Forum mutes never change the global status.",
+        "additionalProperties" : false,
+        "type" : "object",
+        "required" : [ "playerId", "postingRestricted", "restrictedUntil" ],
+        "properties" : {
+          "playerId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "postingRestricted" : {
+            "type" : "boolean"
+          },
+          "restrictedUntil" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
       },
       "PlayerModerationStatusResponse" : {
         "description" : "Player-safe projection of the current global moderation status.",
@@ -759,6 +1900,47 @@
           }
         }
       },
+      "PlayerReportState" : {
+        "type" : "string",
+        "enum" : [ "RECEIVED", "UNDER_REVIEW", "COMPLETED_MEASURES", "COMPLETED_NO_MEASURES" ]
+      },
+      "PlayerReportStatusListResponse" : {
+        "type" : "object",
+        "required" : [ "items" ],
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PlayerReportStatusResponse"
+            }
+          }
+        }
+      },
+      "PlayerReportStatusResponse" : {
+        "type" : "object",
+        "required" : [ "publicReference", "state", "submittedAt", "updatedAt", "completedAt" ],
+        "properties" : {
+          "publicReference" : {
+            "type" : "string"
+          },
+          "state" : {
+            "$ref" : "#/components/schemas/PlayerReportState"
+          },
+          "submittedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "updatedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "completedAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
       "PolicyDocument" : {
         "type" : "object",
         "required" : [ "schemaVersion", "riskRules", "domainThresholds", "automaticConfirmationRules" ],
@@ -792,6 +1974,12 @@
             "type" : "array",
             "items" : {
               "$ref" : "#/components/schemas/AutomaticConfirmationRule"
+            }
+          },
+          "automaticEnforcementRules" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AutomaticEnforcementRule"
             }
           }
         }
@@ -894,6 +2082,63 @@
           }
         }
       },
+      "PortalKnownPlayers" : {
+        "type" : "object",
+        "required" : [ "players" ],
+        "properties" : {
+          "players" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/KnownPlayerTarget"
+            }
+          }
+        }
+      },
+      "PortalLinkedPlayer" : {
+        "type" : "object",
+        "required" : [ "playerId", "playerName" ],
+        "properties" : {
+          "playerId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "playerName" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "PortalPlayerNames" : {
+        "type" : "object",
+        "required" : [ "names" ],
+        "properties" : {
+          "names" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "PortalPlayerProfile" : {
+        "type" : "object",
+        "required" : [ "playerId", "playerName", "linkedProfiles", "linkingStatus" ],
+        "properties" : {
+          "playerId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "playerName" : {
+            "type" : [ "string", "null" ]
+          },
+          "linkedProfiles" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PortalLinkedPlayer"
+            }
+          },
+          "linkingStatus" : {
+            "type" : "string"
+          }
+        }
+      },
       "ProblemDetails" : {
         "description" : "RFC 9457 problem details returned for rejected moderation API requests.",
         "examples" : [ {
@@ -927,6 +2172,46 @@
             }, {
               "type" : "null"
             } ]
+          }
+        }
+      },
+      "ReassignCaseRequest" : {
+        "type" : "object",
+        "required" : [ "moderatorId", "reason" ],
+        "properties" : {
+          "moderatorId" : {
+            "type" : [ "string", "null" ]
+          },
+          "reason" : {
+            "type" : "string"
+          }
+        }
+      },
+      "RegisterEnforcementProxyRequest" : {
+        "type" : "object",
+        "required" : [ "bootNonce" ],
+        "properties" : {
+          "bootNonce" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }
+      },
+      "RegisterTypedEnforcementProxyRequest" : {
+        "type" : "object",
+        "required" : [ "bootNonce", "schemaVersion", "capabilities" ],
+        "properties" : {
+          "bootNonce" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "schemaVersion" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "capabilities" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EnforcementProxyCapability"
+            }
           }
         }
       },
@@ -998,6 +2283,26 @@
           "created" : {
             "type" : "boolean",
             "examples" : [ true ]
+          }
+        }
+      },
+      "ReportType" : {
+        "type" : "string",
+        "enum" : [ "PLAYER_REPORT", "SYSTEM_MESSAGE_REPORT" ]
+      },
+      "RevokeChatMuteRequest" : {
+        "type" : "object",
+        "required" : [ "operationId", "expectedRevision", "internalReason" ],
+        "properties" : {
+          "operationId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "expectedRevision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "internalReason" : {
+            "type" : "string"
           }
         }
       },
@@ -1139,6 +2444,63 @@
         "type" : "string",
         "enum" : [ "VALID", "INVALID", "UNSIGNED", "NOT_APPLICABLE" ]
       },
+      "StaffAppeal" : {
+        "type" : "object",
+        "required" : [ "id", "enforcementId", "status", "statement", "revision", "filedAt", "decidedAt", "safeExplanation", "filingDeadline", "playerId", "caseId", "publicReference", "enforcementType", "enforcementStatus" ],
+        "properties" : {
+          "id" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "enforcementId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/AppealStatus"
+          },
+          "statement" : {
+            "type" : "string"
+          },
+          "revision" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "filedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "decidedAt" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "safeExplanation" : {
+            "type" : [ "string", "null" ]
+          },
+          "filingDeadline" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/Instant"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "playerId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "caseId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "publicReference" : {
+            "type" : "string"
+          },
+          "enforcementType" : {
+            "$ref" : "#/components/schemas/EnforcementType"
+          },
+          "enforcementStatus" : {
+            "$ref" : "#/components/schemas/EnforcementState"
+          }
+        }
+      },
       "SystemMessageReportRequest" : {
         "description" : "Exact message report produced by an authorized detector.",
         "examples" : [ {
@@ -1216,6 +2578,18 @@
           }
         }
       },
+      "TypedEnforcementProxyResultsRequest" : {
+        "type" : "object",
+        "required" : [ "results" ],
+        "properties" : {
+          "results" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LocalEnforcementResult"
+            }
+          }
+        }
+      },
       "UUID" : {
         "type" : "string",
         "format" : "uuid",
@@ -1251,10 +2625,12 @@
   "info" : {
     "description" : "Internal REST API for moderation reports, evidence, and policy management.",
     "title" : "Moderation API",
-    "version" : "0.2.0"
+    "version" : "0.11.1"
   },
   "tags" : [ {
     "name" : "Automatic moderation findings"
+  }, {
+    "name" : "Moderation cases"
   }, {
     "name" : "Moderation evidence"
   }, {
@@ -1265,8 +2641,533 @@
     "name" : "Moderation policy"
   }, {
     "name" : "Moderation status"
+  }, {
+    "name" : "Staff player directory"
   } ],
   "paths" : {
+    "/v1/moderation/cases" : {
+      "get" : {
+        "tags" : [ "Moderation cases" ],
+        "parameters" : [ {
+          "name" : "assignment",
+          "in" : "query",
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/CaseAssignmentFilter"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "required" : true
+        }, {
+          "name" : "category",
+          "in" : "query",
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/ReportCategory"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "required" : true
+        }, {
+          "name" : "createdBefore",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "required" : true
+        }, {
+          "name" : "priority",
+          "in" : "query",
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/CasePriority"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "required" : true
+        }, {
+          "name" : "source",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "status",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "array", "null" ],
+            "items" : {
+              "$ref" : "#/components/schemas/CaseStatus"
+            }
+          },
+          "required" : true
+        }, {
+          "name" : "tab",
+          "in" : "query",
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/CaseQueueTab"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "required" : true
+        }, {
+          "name" : "targetPlayerId",
+          "in" : "query",
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CaseQueryPageResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "List"
+      }
+    },
+    "/v1/moderation/cases/{caseId}" : {
+      "get" : {
+        "tags" : [ "Moderation cases" ],
+        "parameters" : [ {
+          "name" : "caseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CaseDetailResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Detail"
+      }
+    },
+    "/v1/moderation/cases/{caseId}/chat-mutes" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "caseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ChatMuteResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Chat Mute Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "post" : {
+        "parameters" : [ {
+          "name" : "caseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateChatMuteRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create",
+        "tags" : [ "Chat Mute Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/cases/{caseId}/claim" : {
+      "post" : {
+        "tags" : [ "Moderation cases" ],
+        "parameters" : [ {
+          "name" : "caseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Claim"
+      }
+    },
+    "/v1/moderation/cases/{caseId}/dismiss" : {
+      "post" : {
+        "tags" : [ "Moderation cases" ],
+        "parameters" : [ {
+          "name" : "caseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CaseDecisionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Dismiss"
+      }
+    },
+    "/v1/moderation/cases/{caseId}/enforcements" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "caseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JsonNode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create Case",
+        "tags" : [ "Generic Enforcement Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      },
+      "get" : {
+        "parameters" : [ {
+          "name" : "caseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/EnforcementResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Case",
+        "tags" : [ "Generic Enforcement Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/v1/moderation/cases/{caseId}/findings" : {
       "post" : {
         "summary" : "Confirm a finding from a moderation case",
@@ -1290,6 +3191,14 @@
             "type" : [ "string", "null" ]
           }
         }, {
+          "description" : "Quoted current case revision, for example \"3\".",
+          "in" : "header",
+          "name" : "If-Match",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
           "description" : "Authenticated portal actor supplied by the trusted portal BFF.",
           "in" : "header",
           "name" : "X-Grounds-Actor-Id",
@@ -1298,13 +3207,13 @@
             "type" : [ "string", "null" ]
           }
         }, {
-          "description" : "Exact effective portal permission for this operation.",
+          "description" : "Comma-separated effective case permissions supplied by the portal BFF.",
           "in" : "header",
-          "name" : "X-Grounds-Portal-Permission",
+          "name" : "X-Grounds-Portal-Permissions",
           "required" : true,
           "schema" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "moderation.finding.confirm" ]
+            "enum" : [ "moderation.case.decide" ]
           }
         }, {
           "description" : "Optional request correlation identifier.",
@@ -1530,6 +3439,1664 @@
             }
           }
         },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/cases/{caseId}/reassignment" : {
+      "post" : {
+        "tags" : [ "Moderation cases" ],
+        "parameters" : [ {
+          "name" : "caseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReassignCaseRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Reassign"
+      }
+    },
+    "/v1/moderation/cases/{caseId}/release" : {
+      "post" : {
+        "tags" : [ "Moderation cases" ],
+        "parameters" : [ {
+          "name" : "caseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Release"
+      }
+    },
+    "/v1/moderation/cases/{caseId}/resolve" : {
+      "post" : {
+        "tags" : [ "Moderation cases" ],
+        "parameters" : [ {
+          "name" : "caseId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CaseDecisionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ],
+        "summary" : "Resolve"
+      }
+    },
+    "/v1/moderation/chat-mute-presets" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ChatMutePreset"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Presets",
+        "tags" : [ "Chat Mute Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-appeals" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/StaffAppeal"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Staff Appeal Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-appeals/{id}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StaffAppeal"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Staff Appeal Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-appeals/{id}/decisions" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JsonNode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Decide",
+        "tags" : [ "Staff Appeal Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-minecraft/actions" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JsonNode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Action",
+        "tags" : [ "Minecraft Enforcement Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-minecraft/commands" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JsonNode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create",
+        "tags" : [ "Minecraft Enforcement Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-minecraft/measures/{reference}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "reference",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "actorPlayerId",
+          "in" : "query",
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EnforcementResponseDto"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Measure",
+        "tags" : [ "Minecraft Enforcement Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-minecraft/own-measures" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "actorPlayerId",
+          "in" : "query",
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/OwnedMeasure"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Own",
+        "tags" : [ "Minecraft Enforcement Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-minecraft/presets" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "actorPlayerId",
+          "in" : "query",
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EnforcementPresetsResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Presets",
+        "tags" : [ "Minecraft Enforcement Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-minecraft/targets" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "actorPlayerId",
+          "in" : "query",
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "required" : true
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "required" : true
+        }, {
+          "name" : "name",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "prefix",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MinecraftPlayerTargets"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Targets",
+        "tags" : [ "Minecraft Player Directory Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-presets" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EnforcementPresetsResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Presets",
+        "tags" : [ "Generic Enforcement Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-proxy/events" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "afterCursor",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64",
+            "default" : 0
+          },
+          "required" : true
+        }, {
+          "name" : "epoch",
+          "in" : "query",
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "required" : true
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 100
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Events",
+        "tags" : [ "Enforcement Proxy Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-proxy/sessions" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterEnforcementProxyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Register",
+        "tags" : [ "Enforcement Proxy Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-proxy/sessions/{id}" : {
+      "delete" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Close",
+        "tags" : [ "Enforcement Proxy Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-proxy/sessions/{id}/acks" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EnforcementProxyAckRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Acknowledge",
+        "tags" : [ "Enforcement Proxy Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-proxy/sessions/{id}/heartbeat" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Heartbeat",
+        "tags" : [ "Enforcement Proxy Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-proxy/snapshot" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Snapshot",
+        "tags" : [ "Enforcement Proxy Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-proxy/v2/events" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "afterCursor",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64",
+            "default" : 0
+          },
+          "required" : true
+        }, {
+          "name" : "epoch",
+          "in" : "query",
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/UUID"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "required" : true
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 100
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Events",
+        "tags" : [ "Typed Enforcement Proxy Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-proxy/v2/sessions" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterTypedEnforcementProxyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Register",
+        "tags" : [ "Typed Enforcement Proxy Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-proxy/v2/sessions/{id}" : {
+      "delete" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Close",
+        "tags" : [ "Typed Enforcement Proxy Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-proxy/v2/sessions/{id}/acks" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EnforcementProxyAckRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Acknowledge",
+        "tags" : [ "Typed Enforcement Proxy Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-proxy/v2/sessions/{id}/results" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TypedEnforcementProxyResultsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Results",
+        "tags" : [ "Typed Enforcement Proxy Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcement-proxy/v2/snapshot" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "X-Grounds-Moderation-Environment",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Snapshot",
+        "tags" : [ "Typed Enforcement Proxy Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcements" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "status",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/EnforcementResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Pending",
+        "tags" : [ "Generic Enforcement Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcements/staff-actions" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JsonNode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create Staff",
+        "tags" : [ "Generic Enforcement Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcements/{id}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EnforcementResponseDto"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Generic Enforcement Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcements/{id}/actions" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JsonNode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Action",
+        "tags" : [ "Generic Enforcement Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcements/{id}/approval-decisions" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JsonNode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Approval",
+        "tags" : [ "Generic Enforcement Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/enforcements/{id}/revoke" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RevokeChatMuteRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ChatMuteResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Revoke",
+        "tags" : [ "Chat Mute Resource" ],
         "security" : [ {
           "bearerAuth" : [ ]
         } ]
@@ -1826,6 +5393,14 @@
             "type" : [ "string", "null" ]
           }
         }, {
+          "description" : "Quoted current case revision, for example \"3\".",
+          "in" : "header",
+          "name" : "If-Match",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
           "description" : "Authenticated portal actor supplied by the trusted portal BFF.",
           "in" : "header",
           "name" : "X-Grounds-Actor-Id",
@@ -1834,13 +5409,13 @@
             "type" : [ "string", "null" ]
           }
         }, {
-          "description" : "Exact effective portal permission for this operation.",
+          "description" : "Comma-separated effective case permissions supplied by the portal BFF.",
           "in" : "header",
-          "name" : "X-Grounds-Portal-Permission",
+          "name" : "X-Grounds-Portal-Permissions",
           "required" : true,
           "schema" : {
             "type" : [ "string", "null" ],
-            "enum" : [ "moderation.finding.correct" ]
+            "enum" : [ "moderation.case.decide" ]
           }
         }, {
           "description" : "Optional request correlation identifier.",
@@ -2088,6 +5663,532 @@
         } ]
       }
     },
+    "/v1/moderation/player-reports/status" : {
+      "get" : {
+        "summary" : "List the reporting player's safe report statuses",
+        "tags" : [ "Moderation intake" ],
+        "parameters" : [ {
+          "name" : "X-Grounds-Player-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlayerReportStatusListResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/player-reports/{publicReference}/status" : {
+      "get" : {
+        "summary" : "Get the reporting player's safe report status",
+        "description" : "Returns no evidence, moderator identity, internal reason, or target details.",
+        "tags" : [ "Moderation intake" ],
+        "parameters" : [ {
+          "name" : "publicReference",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Grounds-Player-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlayerReportStatusResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/player/appeals/{id}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OwnedAppeal"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Appeal",
+        "tags" : [ "Player Appeal Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/player/appeals/{id}/withdraw" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JsonNode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Withdraw",
+        "tags" : [ "Player Appeal Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/player/measures" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/OwnedMeasure"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "List",
+        "tags" : [ "Player Appeal Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/player/measures/{id}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OwnedMeasure"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get",
+        "tags" : [ "Player Appeal Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/player/measures/{id}/appeals" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JsonNode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "File",
+        "tags" : [ "Player Appeal Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/players/directory" : {
+      "get" : {
+        "summary" : "Search durable known player names across proxies, including offline players",
+        "tags" : [ "Staff player directory" ],
+        "parameters" : [ {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "required" : true
+        }, {
+          "name" : "name",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "prefix",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PortalKnownPlayers"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/players/names" : {
+      "get" : {
+        "summary" : "Resolve at most 100 known player names without disclosing linked identities",
+        "tags" : [ "Staff player directory" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "query",
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PortalPlayerNames"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/players/{playerId}/enforcement-history" : {
+      "get" : {
+        "summary" : "Read a cursor page of player measures, including older active measures",
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "cursor",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EnforcementHistoryPage"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "tags" : [ "Player Enforcement History Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/players/{playerId}/enforcements" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/EnforcementResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Player",
+        "tags" : [ "Generic Enforcement Resource" ],
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
     "/v1/moderation/players/{playerId}/findings" : {
       "get" : {
         "summary" : "List findings for a player",
@@ -2196,6 +6297,55 @@
                 }
               }
             }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/players/{playerId}/profile" : {
+      "get" : {
+        "summary" : "Read a staff player profile and currently verified linked Minecraft identities",
+        "tags" : [ "Staff player directory" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Grounds-Actor-Id",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        }, {
+          "name" : "X-Grounds-Portal-Permissions",
+          "in" : "header",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          },
+          "required" : true
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PortalPlayerProfile"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
           }
         },
         "security" : [ {
@@ -2351,6 +6501,53 @@
           },
           "503" : {
             "description" : "Moderation status is unavailable.",
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/v1/moderation/players/{playerId}/status/forum" : {
+      "get" : {
+        "summary" : "Get a player's forum posting restriction",
+        "description" : "Returns whether an active forum mute blocks posting in the web forum. It is independent of the global status, which forum mutes never raise.",
+        "tags" : [ "Moderation status" ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "playerId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Player-safe forum posting restriction.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PlayerForumStatusResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is missing."
+          },
+          "403" : {
+            "description" : "Status reader is not authorized."
+          },
+          "503" : {
+            "description" : "Forum status is unavailable.",
             "content" : {
               "application/problem+json" : {
                 "schema" : {
