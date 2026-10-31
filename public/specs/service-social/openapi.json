@@ -2,6 +2,14 @@
   "openapi" : "3.1.0",
   "components" : {
     "schemas" : {
+      "AlertSettings" : {
+        "type" : "object",
+        "properties" : {
+          "enabled" : {
+            "type" : [ "boolean", "null" ]
+          }
+        }
+      },
       "BlockList" : {
         "description" : "Everyone a player has blocked.",
         "type" : "object",
@@ -76,6 +84,17 @@
           }
         }
       },
+      "GlobalChatSettings" : {
+        "description" : "Whether this player sees global chat.",
+        "type" : "object",
+        "required" : [ "enabled" ],
+        "properties" : {
+          "enabled" : {
+            "type" : [ "boolean", "null" ],
+            "description" : "False hides chat from the whole network; the player's own lines still show."
+          }
+        }
+      },
       "ImportMinecraftFriendsBody" : {
         "description" : "A player's Mojang friends.",
         "type" : "object",
@@ -101,6 +120,17 @@
             "type" : "integer",
             "format" : "int32",
             "description" : "Pairs left alone — blocked, already friends, over the limit, or not a valid UUID."
+          }
+        }
+      },
+      "MentionSoundSettings" : {
+        "description" : "Whether delivered @Name mentions play a sound.",
+        "type" : "object",
+        "required" : [ "enabled" ],
+        "properties" : {
+          "enabled" : {
+            "type" : [ "boolean", "null" ],
+            "description" : "False disables mention notification sounds."
           }
         }
       },
@@ -252,6 +282,26 @@
           }
         }
       },
+      "PrivateMessageAllowed" : {
+        "description" : "Whether a private message may be delivered.",
+        "type" : "object",
+        "properties" : {
+          "allowed" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "PrivateMessageSettings" : {
+        "description" : "Whether this player accepts private messages.",
+        "type" : "object",
+        "required" : [ "enabled" ],
+        "properties" : {
+          "enabled" : {
+            "type" : [ "boolean", "null" ],
+            "description" : "False refuses every incoming private message."
+          }
+        }
+      },
       "Problem" : {
         "description" : "A failed request, in RFC 9457 problem-details form.",
         "type" : "object",
@@ -302,6 +352,21 @@
             "enum" : [ "SENT", "AUTO_ACCEPTED", "SELF_REQUEST", "ALREADY_FRIENDS", "REQUESTS_DISABLED", "ALREADY_PENDING", "LIMIT_REACHED" ]
           }
         }
+      },
+      "VoiceSettings" : {
+        "description" : "How the voice chat treats this player.",
+        "type" : "object",
+        "required" : [ "partyVoice", "hints" ],
+        "properties" : {
+          "partyVoice" : {
+            "type" : [ "boolean", "null" ],
+            "description" : "False keeps the player out of their party's voice group."
+          },
+          "hints" : {
+            "type" : [ "boolean", "null" ],
+            "description" : "False hides the line above the hotbar when the player's voice changes."
+          }
+        }
       }
     },
     "securitySchemes" : {
@@ -316,17 +381,32 @@
   "info" : {
     "description" : "Friendships, parties and blocks — the three ways players are attached to each other across the network.\n\nA proxy only knows the players connected to itself, so anything that spans proxies has to ask here: whether two players are friends, which party someone is in, whether a message may be delivered at all.\n\nBlocks are one-directional and private. That shapes the rest of the API: a friend request refused because the receiver blocked the sender reports REQUESTS_DISABLED, and a party invite to someone who blocked the inviter is refused without saying why. Neither answer distinguishes a block from an ordinary refusal, on purpose.\n\nNames live here too, in an index that is never deleted — a friends list has to render a name for someone who is offline, which a session table cannot do.",
     "title" : "Social API",
-    "version" : "v1.0.0"
+    "version" : "v1.9.0"
   },
   "tags" : [ {
+    "name" : "Alerts",
+    "description" : "Friend online alerts, party invitations and match sounds."
+  }, {
     "name" : "Blocks",
     "description" : "One-directional, private blocks between players."
   }, {
     "name" : "Friends",
     "description" : "Friendships and the requests that make them."
   }, {
+    "name" : "Global chat",
+    "description" : "Whether a player sees chat from the whole network."
+  }, {
+    "name" : "Mention sounds",
+    "description" : "Per-player notification sounds for delivered @Name mentions."
+  }, {
     "name" : "Parties",
     "description" : "Groups of players who queue and play together."
+  }, {
+    "name" : "Private messages",
+    "description" : "Who may send a player a private message."
+  }, {
+    "name" : "Voice",
+    "description" : "How the voice chat treats a player."
   } ],
   "paths" : {
     "/v1/social/parties/{partyId}" : {
@@ -606,6 +686,31 @@
             "description" : "Bad Request"
           }
         }
+      },
+      "get" : {
+        "summary" : "Read whether this player accepts friend requests",
+        "description" : "A player who has never changed the setting accepts them.",
+        "tags" : [ "Friends" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FriendRequestSettings"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/social/players/{playerId}/friend-requests/{senderId}" : {
@@ -789,6 +894,134 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/Friendship"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/global-chat/settings" : {
+      "put" : {
+        "summary" : "Show or hide global chat for this player",
+        "tags" : [ "Global chat" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/GlobalChatSettings"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GlobalChatSettings"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        }
+      },
+      "get" : {
+        "summary" : "Read whether this player sees global chat",
+        "description" : "A player who has never changed the setting sees it.",
+        "tags" : [ "Global chat" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GlobalChatSettings"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/mention-sounds/settings" : {
+      "put" : {
+        "summary" : "Enable or disable mention sounds",
+        "tags" : [ "Mention sounds" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MentionSoundSettings"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MentionSoundSettings"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        }
+      },
+      "get" : {
+        "summary" : "Read mention sound preferences",
+        "description" : "Enabled until the player opts out.",
+        "tags" : [ "Mention sounds" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MentionSoundSettings"
                 }
               }
             }
@@ -1105,6 +1338,240 @@
           },
           "404" : {
             "description" : "The player is not in a party."
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/private-messages/allowed" : {
+      "get" : {
+        "summary" : "Ask whether one player may send this player a private message",
+        "description" : "False when this player has turned private messages off or has blocked the sender. Both read the same, so a sender cannot tell a block from a preference.",
+        "tags" : [ "Private messages" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "from",
+          "in" : "query",
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "400" : {
+            "description" : "`from` is missing or not a UUID."
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/private-messages/settings" : {
+      "put" : {
+        "summary" : "Turn private messages on or off for this player",
+        "tags" : [ "Private messages" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PrivateMessageSettings"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PrivateMessageSettings"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        }
+      },
+      "get" : {
+        "summary" : "Read whether this player accepts private messages",
+        "description" : "A player who has never changed the setting accepts them.",
+        "tags" : [ "Private messages" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PrivateMessageSettings"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/voice/settings" : {
+      "put" : {
+        "summary" : "Change this player's voice settings",
+        "tags" : [ "Voice" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VoiceSettings"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VoiceSettings"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        }
+      },
+      "get" : {
+        "summary" : "Read this player's voice settings",
+        "description" : "A player who has never changed them has both on.",
+        "tags" : [ "Voice" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VoiceSettings"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/social/players/{playerId}/{setting}/settings" : {
+      "put" : {
+        "summary" : "Enable or disable a player's alert preference",
+        "tags" : [ "Alerts" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "setting",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "friend-alerts|party-invites|match-sounds"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AlertSettings"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AlertSettings"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        }
+      },
+      "get" : {
+        "summary" : "Read a player's alert preference",
+        "description" : "Enabled until the player opts out.",
+        "tags" : [ "Alerts" ],
+        "parameters" : [ {
+          "name" : "playerId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : [ "string", "null" ]
+          }
+        }, {
+          "name" : "setting",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "friend-alerts|party-invites|match-sounds"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AlertSettings"
+                }
+              }
+            }
           }
         }
       }
