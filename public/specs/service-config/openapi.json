@@ -251,7 +251,7 @@
   "info" : {
     "description" : "Versioned configuration documents, addressed as (app, env, namespace, key).\n\nA service declares the documents it expects on startup and then reads a snapshot; only the missing documents are created, so an operator's edit survives every redeploy. Snapshots carry a version as an `ETag`, and a caller that sends it back gets a 304 when nothing has moved.\n\nChanges are also announced on NATS, so a service learns that its configuration moved without polling for it. The event carries the version, not the documents — the reader comes back here for those.\n\nReading is open to any authenticated workload. Browsing is admin-only, while creating, replacing, and deleting one app's documents can be granted to that app's own ServiceAccount.",
     "title" : "Config API",
-    "version" : "v1.5.0"
+    "version" : "v1.6.0"
   },
   "tags" : [ {
     "name" : "Config",
