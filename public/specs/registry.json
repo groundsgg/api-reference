@@ -9,6 +9,13 @@
       "default": false
     },
     {
+      "id": "service-coins",
+      "title": "Coins API",
+      "slug": "coins",
+      "path": "service-coins/openapi.json",
+      "default": false
+    },
+    {
       "id": "service-config",
       "title": "Config API",
       "slug": "config",
